@@ -1,0 +1,7 @@
+processes such as
+ - LaneFollowProcess
+    - sends steering angle via outPs
+ - signdetection
+    - sends text about the detected sign
+
+the output of these will go to datafusion

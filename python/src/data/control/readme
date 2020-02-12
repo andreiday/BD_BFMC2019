@@ -1,0 +1,2 @@
+receives information from datafusion process and serialhandler process
+sends information to SerialHandler process
