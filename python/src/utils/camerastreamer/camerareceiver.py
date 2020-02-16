@@ -58,13 +58,27 @@ class CameraReceiver(WorkerProcess):
         """
         super(CameraReceiver,self).__init__(inPs, outPs)
 
+        self.port       =   2244
+        self.serverIp   =   '192.168.1.2'
 
         self.imgSize    = (480,640,3)
     # ===================================== RUN ==========================================
     def run(self):
         """Apply the initializers and start the threads.
         """
+        self._init_socket()
         super(CameraReceiver,self).run()
+
+    # ====================== =============== INIT SOCKET ==================================
+    def _init_socket(self):
+        """Initialize the socket.
+        """
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #self.server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        self.server_socket.bind((self.serverIp, self.port))
+
+        #self.server_socket.listen(0)
+
 
     # ===================================== INIT THREADS =================================
     def _init_threads(self):
@@ -82,23 +96,67 @@ class CameraReceiver(WorkerProcess):
         outPs : list(Pipe)
             output pipes (not used at the moment)
         """
+        while True:
+
+            # decode image
+            data, addr = self.server_socket.recvfrom(65534)
+
+            # bts = self.connection.recvfrom()
+            # print(image)
+            # print(addr)
+            # frame = Image.open(BytesIO(data))
+            # frame = BytesIO(data)
+
+            # image.show()
+            # image_len = struct.unpack('<L', self.connection.read(struct.calcsize('<L')))[0]
+            # bts = self.connection.read(image_len)
+
+            # ----------------------- read image -----------------------
+            image = np.frombuffer(data, np.uint8)
+            image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            image = np.reshape(image, self.imgSize)
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            #
+            # # ----------------------- show images -------------------
+            cv2.namedWindow('Image', cv2.WINDOW_NORMAL)
+            cv2.imshow('Image', image)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                self.server_socket.close()
+                break
+        '''
         try:
             while True:
 
                 # decode image
-                image_len = struct.unpack('<L', self.connection.read(struct.calcsize('<L')))[0]
-                bts = self.connection.read(image_len)
+                data, addr = self.server_socket.recvfrom(65534)
+
+                # bts = self.connection.recvfrom()
+                # print(image)
+                # print(addr)
+                #image = Image.open(BytesIO(data))
+                frame = np.frombuffer(
+            data, dtype=np.uint8).reshape(self.imgSize)
+                # image = BytesIO(data)
+                # image.show()
+                # image_len = struct.unpack('<L', self.connection.read(struct.calcsize('<L')))[0]
+                # bts = self.connection.read(image_len)
 
                 # ----------------------- read image -----------------------
-                image = np.frombuffer(bts, np.uint8)
-                image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-                image = np.reshape(image, self.imgSize)
-                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                # image = np.frombuffer(BytesIO(data), np.uint8)
+                # image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+                # image = np.reshape(image, self.imgSize)
+                # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                #
+                # # ----------------------- show images -------------------
+                cv2.namedWindow('Image', cv2.WINDOW_NORMAL)
+                cv2.imshow('Image', frame)
 
-                # ----------------------- show images -------------------
-                cv2.imshow('Image', image)
-                cv2.waitKey(1)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
         except:
             pass
         finally:
-            pass
+            #self.connection.close()
+            self.server_socket.close()
+        '''

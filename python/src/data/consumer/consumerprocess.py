@@ -42,16 +42,17 @@ class Consumer(WorkerProcess):
         outPs : list(Pipe)
             List of the output pipes
         """
-        super(Consumer,self).__init__( inPs, outPs)
+        super(Consumer,self).__init__(inPs, outPs)
 
     def _init_threads(self):
         """Initialize the threads by adding a consume method for each input pipes.
         """
-        for pipe in self.inPs:
-            self.threads.append(Thread(name='Consume',target=Consumer._consume, args=(pipe,)))
+        for inPipe in self.inPs:
+            for outPipe in self.outPs:
+                self.threads.append(Thread(name='Consume',target=Consumer._consume, args=(inPipe,outPipe)))
 
     @staticmethod
-    def _consume(pipe):
+    def _consume(inPipe, outPipe):
         """A simple method to read the content from the input pipe to consume the content of the connection.
 
         Parameters
@@ -60,7 +61,15 @@ class Consumer(WorkerProcess):
             Input communication channel.
         """
         while True:
-            res = pipe.recv()
-            print("\n\n### Serial simulation process ###")
-            #print("type recv", type(res))
-            print("Value: ", res)
+            res = inPipe.recv()
+            print("##### CONTROLLER #####")
+            commands = {
+                'action' : 'MCTL',
+                'speed' : float(res[0]),
+                'steerAngle' : float(res[1])
+             }
+
+
+            print("Value: ", commands, end="\n\n")
+
+            outPipe.send(commands)

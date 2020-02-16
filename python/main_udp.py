@@ -23,13 +23,10 @@ from src.utils.cameraspoofer.cameraspooferprocess  import CameraSpooferProcess
 from src.utils.camerastreamer.camerareceiver import CameraReceiver
 
 # image processing imports
-from src.data.imageprocessing.frameprocessingprocess import FrameProcessingProcess
+from src.data.imageprocessing.lanefollowprocess import LaneFollowProcess
 
-# temporarly purposed as data fusion & decision maker
-from src.data.brain.movementprocess import MovementProcess as DataFusionProcess
-
-# temporarly purposed as controller
-from src.data.consumer.consumerprocess import Consumer as ControllerProcess
+# test consumer process
+from src.data.consumer.consumerprocess import Consumer as SerialSimulationProc
 
 dir = os.path.join("src","vid")
 
@@ -39,29 +36,27 @@ def main():
     allProcesses = list()
 
     camR, camS = Pipe(duplex = False)
-    moveDataIn, frameProcData = Pipe(duplex = False)
-    controllerIn, moveDataOut = Pipe(duplex = False)
-    serialRecv, controllerOut = Pipe(duplex = False)
+    serialRecv, steerAngle = Pipe(duplex = False)
+
+    udpRecv = CameraReceiver([],[])
+    allProcesses.append(udpRecv)
 
     #================================ CAMERA Handler ==============================================
-    camSpoofer = CameraSpooferProcess([],[camS], dir)
-    allProcesses.append(camSpoofer)
+    # camSpoofer = CameraSpooferProcess([],[camS], dir)
+    # allProcesses.append(camSpoofer)
+    #
+    # #================================ LaneDetect ==============================================
+    # laneFollowRecv = LaneFollowProcess([camR], [steerAngle])
+    # allProcesses.append(laneFollowRecv)
+    #
+    #
+    # #================================ SERIAL ==============================================
+    # testSerialSimProc = SerialSimulationProc([serialRecv],[])
+    # allProcesses.append(testSerialSimProc)
 
-    #================================ Frameprocessing process ==============================================
-    frameProcessing = FrameProcessingProcess([camR], [frameProcData])
-    allProcesses.append(frameProcessing)
 
-    #================================ Movement process ==============================================
-    moveCarProc = DataFusionProcess([moveDataIn], [moveDataOut])
-    allProcesses.append(moveCarProc)
-
-    #================================ Controller ==============================================
-    controllerProc = ControllerProcess([controllerIn],[controllerOut])
-    allProcesses.append(controllerProc)
-
-    #================================ Serial     ==============================================
-    serialProc = SerialHandler([serialRecv],[])
-    allProcesses.append(serialProc)
+    #SerialProc = SerialHandler([serialRecv],[])
+    #allProcesses.append(SerialProc)
 
     #================================ PROCESS HANDLER ==============================================
 

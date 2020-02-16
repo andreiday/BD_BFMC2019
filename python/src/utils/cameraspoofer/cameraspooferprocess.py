@@ -115,10 +115,10 @@ class CameraSpooferProcess(WorkerProcess):
                         frame = cv2.resize(frame, self.videoSize)
 
                         # ----------------------- show images -------------------
-                        cv2.imshow('Image', frame)
+                        # cv2.imshow('Image', frame)
 
-                        if cv2.waitKey(40) & 0xFF == ord('q'):
-                            break
+                        # if cv2.waitKey(1) & 0xFF == ord('q'):
+                        #    break
 
                         for p in self.outPs:
                             p.send([[stamp], frame])
