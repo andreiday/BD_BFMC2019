@@ -46,8 +46,7 @@ from src.utils.templates.workerprocess import WorkerProcess
 class CameraReceiver(WorkerProcess):
     # ===================================== INIT =========================================
     def __init__(self, inPs, outPs):
-        """Process used for debugging. It receives the images from the raspberry and
-        duplicates the perception pipline that is running on the raspberry.
+        """Process used for receiving frames from unity. It receives the images from unity and pipes through the output pipe. The idea is to apply the imageprocessing algorithms on the simulation frames and then send data back to unity to be used in ML agents.
 
         Parameters
         ----------
@@ -96,34 +95,36 @@ class CameraReceiver(WorkerProcess):
         outPs : list(Pipe)
             output pipes (not used at the moment)
         """
-        while True:
+        print("Init read stream")
+        try:
+            while True:
+                # decode image
+                data, addr = self.server_socket.recvfrom(65534)
+                stamp = time.time()
 
-            # decode image
-            data, addr = self.server_socket.recvfrom(65534)
+                if data:
+                # ----------------------- read image -----------------------
+                    frame = np.frombuffer(data, np.uint8)
+                    frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+                    frame = np.reshape(frame, self.imgSize)
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    #
+                    # # ----------------------- show images -------------------
+                    cv2.namedWindow('udpVid', cv2.WINDOW_NORMAL)
+                    cv2.imshow('udpVid', frame)
 
-            # bts = self.connection.recvfrom()
-            # print(image)
-            # print(addr)
-            # frame = Image.open(BytesIO(data))
-            # frame = BytesIO(data)
+                    for p in self.outPs:
+                        p.send([[stamp], frame])
 
-            # image.show()
-            # image_len = struct.unpack('<L', self.connection.read(struct.calcsize('<L')))[0]
-            # bts = self.connection.read(image_len)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                else:
+                    print("Empty data")
+        except:
+            pass
+        finally:
+            self.server_socket.close()
 
-            # ----------------------- read image -----------------------
-            image = np.frombuffer(data, np.uint8)
-            image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-            image = np.reshape(image, self.imgSize)
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            #
-            # # ----------------------- show images -------------------
-            cv2.namedWindow('Image', cv2.WINDOW_NORMAL)
-            cv2.imshow('Image', image)
-
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                self.server_socket.close()
-                break
         '''
         try:
             while True:

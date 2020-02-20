@@ -56,7 +56,7 @@ class FrameProcessingProcess(WorkerProcess):
             print("##### IMAGE PROCESSING #####")
 
             print("\nStamp time frame proc: ", stamp)
-            # time.sleep(0.1)
+
             # process the frames, output no. lanes
             lane_lines = frame_processing.detectLanes(frame)
 

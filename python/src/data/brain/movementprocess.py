@@ -45,7 +45,7 @@ class MovementProcess(WorkerProcess):
 
         while True:
             # receive frames and stamp from pipe
-            frame, lane_lines, detected_sign = inPipe.recv()
+            frame, lane_lines, _ = inPipe.recv()
             #print("\nStamp time: ", stamp)
 
             # print("Lane lines movement: ", lane_lines)
@@ -57,14 +57,14 @@ class MovementProcess(WorkerProcess):
 
             #print("steering_angle: ", steering_angle)
             #print("Speed: ", speed)
-            print("Detected SIGN: ", detected_sign)
 
 
-            if detected_sign == 'STOP':
-                print("STOP DETECTED, stopping..")
-                steering_angle = 0
-                speed = 0
-                outPipe.send([speed, steering_angle])
-                time.sleep(2)
             # send no. lanes through pipe
-            outPipe.send([speed, steering_angle])
+            outPipe.send([speed, steering_angle, lane_lines])
+
+    def _detectedSign(inPipe, outPipe):
+        while True:
+            # get detected sign through pipe
+            _, _, detected_sign = inPipe.recv()
+
+            print("DETECTED SIGN: ", detected_sign)
