@@ -23,7 +23,7 @@ class DataSend(WorkerProcess):
             List of output pipes (not used at the moment)
         """
         super(DataSend, self).__init__(inPs, outPs)
-        self.serverIp = '192.168.1.2'
+        self.serverIp = '192.168.1.254'
         self.port = 2244
         self.server_address = (self.serverIp, self.port)
 
@@ -61,20 +61,21 @@ class DataSend(WorkerProcess):
     def _send_thread(self, inPs):
         """Send data received through the input pipe.
         """
-        print("successfully started thread")
+        print("successfully started udp datasend")
 
         try:
             while True:
                 stamp = time.time()
-                # data = inP.recv()
-                data = "text"
+
+                for p in self.inPs:
+                    data = p.recv()
 
                 stamped_data = [[stamp],data]
 
                 stamped_data = str(stamped_data).encode()
-                # print(stamped_data)
+                print(stamped_data)
 
-                self.client_socket.send(stamped_data)
+                self.client_socket.sendto(stamped_data, self.server_address)
 
         except Exception as e:
             print("Failed to transmit data:" , e ,"\n")

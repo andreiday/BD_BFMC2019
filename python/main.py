@@ -40,16 +40,13 @@ dir = os.path.join("src","vid")
 
 commSerial = False
 commUDP = True
-debugUDP = False
+unityUDP = True
 
 def main():
     #================================ PROCESSES ==============================================
     allProcesses = list()
 
-
-    if debugUDP:
-        udpDataIn, camS = Pipe(duplex = False)
-    else:
+    if unityUDP:
         camR, camS = Pipe(duplex = False)
         moveDataIn, frameProcData = Pipe(duplex = False)
         udpDataIn, moveDataOut = Pipe(duplex = False)
@@ -57,6 +54,14 @@ def main():
     if commSerial:
         controllerIn, moveDataOut = Pipe(duplex = False)
         serialRecv, controllerOut = Pipe(duplex = False)
+
+    #================================ Frameprocessing process ==============================================
+    frameProcessing = FrameProcessingProcess([camR], [frameProcData])
+    allProcesses.append(frameProcessing)
+
+    #================================ Movement process ==============================================
+    moveCarProc = DataFusionProcess([moveDataIn], [moveDataOut])
+    allProcesses.append(moveCarProc)
 
     if commUDP:
         udpRecv = UnityReceiver([],[camS])
@@ -68,14 +73,6 @@ def main():
     #================================ CAMERA Handler ==============================================
         camSpoofer = CameraSpooferProcess([],[camS], dir)
         allProcesses.append(camSpoofer)
-
-    #================================ Frameprocessing process ==============================================
-    frameProcessing = FrameProcessingProcess([camR], [frameProcData])
-    allProcesses.append(frameProcessing)
-
-    #================================ Movement process ==============================================
-    moveCarProc = DataFusionProcess([moveDataIn], [moveDataOut])
-    allProcesses.append(moveCarProc)
 
 
     #================================ CONTROLLER ==============================================
