@@ -2,21 +2,18 @@ import io
 import time
 import datetime
 import sys
+
 sys.path.append('.')
 
-import cv2
 import multiprocessing
 from multiprocessing import Process
 from threading import Thread
 
 from src.utils.templates.workerprocess import WorkerProcess
-from src.data.imageprocessing.writethread import WriteThreadFrameProc
-from src.data.imageprocessing.frameprocessing import FrameProcessing
+from src.data.brain.move import MoveLogic
+from src.data.brain.writethread import WriteThreadFzz
 
-
-
-class FrameProcessingProcess(WorkerProcess):
-    #================================ LANE DETECTION PROCESS =====================================
+class DataFusionProcess(WorkerProcess):
     def __init__(self, inPs, outPs):
         """Process that:
             -   receives information about the frames from the cameraprocess.
@@ -24,24 +21,27 @@ class FrameProcessingProcess(WorkerProcess):
 
         Parameters
         ----------
-        inPs : list()
             input pipes
         outPs : list()
             output pipes
         daemon : bool, optional
             daemon process flag, by default True
         """
+        super(DataFusionProcess,self).__init__(inPs, outPs)
 
-        super(FrameProcessingProcess,self).__init__(inPs, outPs)
 
 
     def _init_threads(self):
         '''
         '''
-        writeTh = WriteThreadFrameProc(self.inPs[0], self.outPs[0])
+        writeTh = WriteThreadFzz(self.inPs[0], self.outPs[0])
         self.threads.append(writeTh)
 
-
-
     def run(self):
-        super(FrameProcessingProcess,self).run()
+        super(DataFusionProcess,self).run()
+
+    def displayInfo(self):
+        """Display all parameters on the screen.
+        """
+        # clear stdout for a smoother display
+        os.system('cls' if os.name=='nt' else 'clear')

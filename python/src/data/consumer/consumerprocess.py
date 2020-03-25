@@ -42,14 +42,19 @@ class Consumer(WorkerProcess):
         outPs : list(Pipe)
             List of the output pipes
         """
+
         super(Consumer,self).__init__(inPs, outPs)
+
+    def run(self):
+        super(Consumer,self).run()
 
     def _init_threads(self):
         """Initialize the threads by adding a consume method for each input pipes.
         """
-        for inPipe in self.inPs:
-            for outPipe in self.outPs:
-                self.threads.append(Thread(name='Consume',target=Consumer._consume, args=(inPipe,outPipe)))
+
+        for inPipe, outPipe in zip(self.inPs, self.outPs):
+            thReadWrite = Thread(name='Consume',target=Consumer._consume, args=(inPipe, outPipe),daemon=False)
+        self.threads.append(thReadWrite)
 
     @staticmethod
     def _consume(inPipe, outPipe):
@@ -60,16 +65,20 @@ class Consumer(WorkerProcess):
         pipe : Pipe
             Input communication channel.
         """
-        while True:
-            res = inPipe.recv()
-            print("##### CONTROLLER #####")
-            commands = {
-                'action' : 'MCTL',
-                'speed' : float(res[0]),
-                'steerAngle' : float(res[1])
-             }
+        try:
+            while True:
+                res = inPipe.recv()
 
+                movecommands = {
+                    'action' : 'MCTL',
+                    'speed' : float(res[0]),
+                    'steerAngle' : float(res[1])
+                }
 
-            print("Value: ", commands, end="\n\n")
+                print("res: ", res)
+                print("Value: ", movecommands, end="\n")
+                # outPipe.send(movecommands)
 
-            outPipe.send(commands)
+        except Exception as e:
+            print("Failed consumer process: " , e ,"\n")
+            pass

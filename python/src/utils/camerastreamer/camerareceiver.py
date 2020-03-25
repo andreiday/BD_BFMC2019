@@ -110,14 +110,14 @@ class CameraReceiver(WorkerProcess):
                     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                     #
                     # # ----------------------- show images -------------------
-                    cv2.namedWindow('udpVid', cv2.WINDOW_NORMAL)
-                    cv2.imshow('udpVid', frame)
+                    #cv2.namedWindow('udpVid', cv2.WINDOW_NORMAL)
+                    #cv2.imshow('udpVid', frame)
 
                     for p in self.outPs:
                         p.send([[stamp], frame])
 
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
+                    #if cv2.waitKey(1) & 0xFF == ord('q'):
+                    #    break
                 else:
                     print("Empty data")
         except:

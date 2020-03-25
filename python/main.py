@@ -21,12 +21,11 @@ from src.hardware.serialhandler.serialhandler        import SerialHandler
 # utility imports
 from src.utils.cameraspoofer.cameraspooferprocess  import CameraSpooferProcess
 
-
 # image processing imports
 from src.data.imageprocessing.frameprocessingprocess import FrameProcessingProcess
 
 # temporarly purposed as data fusion & decision maker
-from src.data.brain.movementprocess import MovementProcess as DataFusionProcess
+from src.data.brain.datafusionproc import DataFusionProcess
 
 # temporarly purposed as controller
 from src.data.consumer.consumerprocess import Consumer as ControllerProcess
@@ -34,53 +33,41 @@ from src.data.consumer.consumerprocess import Consumer as ControllerProcess
 # udp data sending & receiving imports
 from src.utils.camerastreamer.camerareceiver import CameraReceiver as UnityReceiver
 
-from src.utils.dataUDPsender.datasend import DataSend as UnitySender
-
 dir = os.path.join("src","vid")
 
 commSerial = False
-commUDP = True
-unityUDP = True
 
 def main():
     #================================ PROCESSES ==============================================
     allProcesses = list()
 
-    if unityUDP:
-        camR, camS = Pipe(duplex = False)
-        moveDataIn, frameProcData = Pipe(duplex = False)
-        udpDataIn, moveDataOut = Pipe(duplex = False)
 
-    if commSerial:
-        controllerIn, moveDataOut = Pipe(duplex = False)
-        serialRecv, controllerOut = Pipe(duplex = False)
+    camR, camS = Pipe(duplex = False)
+    dataFzzIn, frameProcDataOut = Pipe(duplex = False)
+    controllerIn, dataFzzOut = Pipe(duplex = False)
+    serialRecv, controllerOut = Pipe(duplex = False)
+
+
+
+    #================================ CAMERA Handler ==============================================
+    camSpoofer = CameraSpooferProcess([],[camS], dir)
+    allProcesses.append(camSpoofer)
 
     #================================ Frameprocessing process ==============================================
-    frameProcessing = FrameProcessingProcess([camR], [frameProcData])
+    frameProcessing = FrameProcessingProcess([camR], [frameProcDataOut])
     allProcesses.append(frameProcessing)
 
     #================================ Movement process ==============================================
-    moveCarProc = DataFusionProcess([moveDataIn], [moveDataOut])
-    allProcesses.append(moveCarProc)
-
-    if commUDP:
-        udpRecv = UnityReceiver([],[camS])
-        allProcesses.append(udpRecv)
-
-        udpSend = UnitySender([udpDataIn],[])
-        allProcesses.append(udpSend)
-    else:
-    #================================ CAMERA Handler ==============================================
-        camSpoofer = CameraSpooferProcess([],[camS], dir)
-        allProcesses.append(camSpoofer)
-
+    dataFusionProc = DataFusionProcess([dataFzzIn], [dataFzzOut])
+    allProcesses.append(dataFusionProc)
 
     #================================ CONTROLLER ==============================================
-    if commSerial:
-        controllerProc = ControllerProcess([controllerIn],[controllerOut])
-        allProcesses.append(controllerProc)
+    controllerProc = ControllerProcess([controllerIn],[controllerOut])
+    allProcesses.append(controllerProc)
+
 
     #================================ Serial     ==============================================
+    if commSerial:
         serialProc = SerialHandler([serialRecv],[])
         allProcesses.append(serialProc)
 

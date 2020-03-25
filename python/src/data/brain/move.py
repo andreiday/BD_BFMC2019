@@ -2,13 +2,13 @@ import math
 '''
 methods for computing steering and speed
 '''
-MAX_SPEED = 0.28
+MAX_SPEED = 0.2
 
 class MoveLogic(object):
 
     def __init__(self):
-        self.curr_steering_angle = 0
-        self.current_speed = MAX_SPEED
+        self.curr_steering_angle = 0.0
+        self.current_speed = 0.0
 
     def getSpeed(self, steering):
         steering = abs(steering)

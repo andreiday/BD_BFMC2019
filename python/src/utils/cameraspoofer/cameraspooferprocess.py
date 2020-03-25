@@ -91,7 +91,7 @@ class CameraSpooferProcess(WorkerProcess):
         """Initialize the thread of the process.
         """
 
-        thPlay = Thread(name='VideoPlayerThread',target= self.play_video, args=(self.videos, ))
+        thPlay = Thread(name='VideoPlayerThread',target= self.play_video, args=(self.videos, ),daemon=True)
         self.threads.append(thPlay)
 
 
@@ -115,14 +115,15 @@ class CameraSpooferProcess(WorkerProcess):
                         frame = cv2.resize(frame, self.videoSize)
 
                         # ----------------------- show images -------------------
-                        # cv2.imshow('Image', frame)
+                        cv2.namedWindow('org', cv2.WINDOW_NORMAL)
+                        cv2.imshow('org', frame)
 
-                        # if cv2.waitKey(1) & 0xFF == ord('q'):
-                        #    break
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            break
 
                         for p in self.outPs:
                             p.send([[stamp], frame])
-
+                        time.sleep(0.05)
                     else:
                         break
 

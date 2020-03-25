@@ -36,6 +36,7 @@ class DataSend(WorkerProcess):
         """
         # if self._blocker.is_set():
         #     return
+        
         sendTh = Thread(name='DataStream Sending',target = self._send_thread, args= (self.inPs, ))
         sendTh.daemon = True
         self.threads.append(sendTh)

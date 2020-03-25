@@ -9,8 +9,6 @@ import os
 from scipy.stats import itemfreq
 
 class FrameProcessing(object):
-    def __init__(self):
-        self.nr_lane_lines = 0
 
     #================================ PROCESSING STEPS ============================================
 
@@ -18,10 +16,12 @@ class FrameProcessing(object):
         edges = detectEdges(frame)
 
         cropped_edges = regionOfInterestLanes(edges)
-
         line_segments = detectLineSegments(cropped_edges)
 
+        showVideo("crpedges", cropped_edges)
+
         lane_lines = averageSlopeIntercept(frame, line_segments)
+
 
         return lane_lines
 
@@ -38,9 +38,10 @@ class FrameProcessing(object):
         #   param 1: gradient value used to handle edge detection
         #   param 2: threshold accumulator (larger - more circles detected includibg false ones)
 
-        circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 70, param1=120, param2=40)
+        circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 70, param1=120, param2=30)
         # output: circles encoded as vectors -> (x, y, radius)
         # at least some circles are found
+
         if not circles is None:
             circles = np.uint16(np.around(circles))
             max_r, max_i = 0, 0
@@ -49,7 +50,6 @@ class FrameProcessing(object):
                     max_i = i
                     max_r = circles[:, :, 2][0][i]
             x, y, r = circles[:, :, :][0][max_i]
-            print(circles)
 
             if y > r and x > r:
                 square = frame[y-r:y+r, x-r:x+r]
@@ -60,7 +60,8 @@ class FrameProcessing(object):
                 elif dominant_color[0] > 80:
                     zone_0 = square[square.shape[0]*3//8:square.shape[0]
                                     * 5//8, square.shape[1]*1//8:square.shape[1]*3//8]
-                    # cv2.imshow('Zone0', zone_0)
+                    #cv2.imshow('Zone0', zone_0)
+
                     zone_0_color = get_dominant_color(zone_0, 1)
 
                     zone_1 = square[square.shape[0]*1//8:square.shape[0]
@@ -70,7 +71,7 @@ class FrameProcessing(object):
 
                     zone_2 = square[square.shape[0]*3//8:square.shape[0]
                                     * 5//8, square.shape[1]*5//8:square.shape[1]*7//8]
-                    # cv2.imshow('Zone2', zone_2)
+                    #cv2.imshow('Zone2', zone_2)
                     zone_2_color = get_dominant_color(zone_2, 1)
 
                     if zone_1_color[2] < 60:
@@ -91,7 +92,7 @@ class FrameProcessing(object):
             for i in circles[0, :]:
                 cv2.circle(frame, (i[0], i[1]), i[2], (0, 255, 0), 2)
                 cv2.circle(frame, (i[0], i[1]), 2, (0, 0, 255), 3)
-
+        showVideo("sign", img)
 
 #================================ PROCESSING FUNCTIONS FOR LANES ============================================
 
@@ -183,7 +184,7 @@ def averageSlopeIntercept(frame, line_segments):
     return lane_lines
 
 
-'''
+
 def displayLines(frame, lines, line_color=(0, 0, 255), line_width=25):
     line_image = np.zeros_like(frame)
     if lines is not None:
@@ -192,7 +193,7 @@ def displayLines(frame, lines, line_color=(0, 0, 255), line_width=25):
                 cv2.line(line_image, (x1, y1), (x2, y2), line_color, line_width)
     line_image = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
     return line_image
-'''
+
 
 def make_points(frame, line):
     '''
@@ -261,3 +262,4 @@ def showVideo(title, frame):
     '''
     cv2.namedWindow(title, cv2.WINDOW_NORMAL)
     cv2.imshow(title, frame)
+    cv2.waitKey(1)
