@@ -6,99 +6,152 @@ import time
 import datetime
 import sys
 import os
-from scipy.stats import itemfreq
+import glob
+sys.path.append('.')
 
-class FrameProcessing(object):
+dir = os.path.join("src","utils","tfmodel")
 
-    #================================ PROCESSING STEPS ============================================
+class FrameProcessing():
+    #================================ PROCESSING STEP ============================================
+    def __init__(self):
+
+        modelpath = os.path.join(dir,"ssdlite_mobilenet_v2_coco.pb")
+        graphpath = os.path.join(dir,"graph.pbtxt")
+
+        self.CLASSES = ["park", "pedestrians", "priority", "stop"]
+        self.COLORS = np.random.uniform(0, 255, size=(len(self.CLASSES), 3))
+        self.net = cv2.dnn.readNetFromTensorflow(modelpath, graphpath)
+        self.enableSignFrames = False
 
     def detectLanes(self, frame):
         edges = detectEdges(frame)
 
         cropped_edges = regionOfInterestLanes(edges)
+        # showVideo("crpedges", cropped_edges)
+
         line_segments = detectLineSegments(cropped_edges)
 
-        showVideo("crpedges", cropped_edges)
+        lane_lines_images = displayLines(frame,line_segments)
+        # showVideo("lanelines", lane_lines_images)
 
         lane_lines = averageSlopeIntercept(frame, line_segments)
 
-
         return lane_lines
 
-    def detectSigns(self, frame):
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        img = cv2.medianBlur(gray, 29)
-        img = regionOfInterestSigns(img)
+    def detectIntersection(self, frame):
+        frame = cv2.medianBlur(frame, 9)
+        edge = detectEdges(frame)
 
-        # detect circles
-        #   parameters:
-        #   8-bit single channel image, method:Hough, dp - 1:the larger it gets the smaller the accumulator array gets (poor image quality)
-        #   minDist - 50: if it too small, multiple circles in the same neighbourhood as the original may be falsly detected, but if is too large then sone circkes may not be detected at all.
-        #   param 1: gradient value used to handle edge detection
-        #   param 2: threshold accumulator (larger - more circles detected includibg false ones)
 
-        circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 70, param1=120, param2=30)
-        # output: circles encoded as vectors -> (x, y, radius)
-        # at least some circles are found
+        framecut = regionOfInterestIntersection(edge)
 
-        if not circles is None:
-            circles = np.uint16(np.around(circles))
-            max_r, max_i = 0, 0
-            for i in range(len(circles[:, :, 2][0])):
-                if circles[:, :, 2][0][i] > 50 and circles[:, :, 2][0][i] > max_r:
-                    max_i = i
-                    max_r = circles[:, :, 2][0][i]
-            x, y, r = circles[:, :, :][0][max_i]
+        line_segments = []
+        line_segments = detectLineSegmentsIntersection(framecut)
 
-            if y > r and x > r:
-                square = frame[y-r:y+r, x-r:x+r]
-
-                dominant_color = get_dominant_color(square, 2)
-                if dominant_color[2] > 100:
-                    return "STOP"
-                elif dominant_color[0] > 80:
-                    zone_0 = square[square.shape[0]*3//8:square.shape[0]
-                                    * 5//8, square.shape[1]*1//8:square.shape[1]*3//8]
-                    #cv2.imshow('Zone0', zone_0)
-
-                    zone_0_color = get_dominant_color(zone_0, 1)
-
-                    zone_1 = square[square.shape[0]*1//8:square.shape[0]
-                                    * 3//8, square.shape[1]*3//8:square.shape[1]*5//8]
-                    #cv2.imshow('Zone1', zone_1)
-                    zone_1_color = get_dominant_color(zone_1, 1)
-
-                    zone_2 = square[square.shape[0]*3//8:square.shape[0]
-                                    * 5//8, square.shape[1]*5//8:square.shape[1]*7//8]
-                    #cv2.imshow('Zone2', zone_2)
-                    zone_2_color = get_dominant_color(zone_2, 1)
-
-                    if zone_1_color[2] < 60:
-                        if sum(zone_0_color) > sum(zone_2_color):
-                            return "PARK"
-                        else:
-                            return "PARK"
+        if line_segments is None:
+            return "N"
+        else:
+            for line_segment in line_segments:
+                for x1, y1, x2, y2 in line_segment:
+                    if y1 == y2 or abs(y1-y2)<5:
+                        return "Y"
                     else:
-                        if sum(zone_1_color) > sum(zone_0_color) and sum(zone_1_color) > sum(zone_2_color):
-                            return "PARK"
-                        elif sum(zone_0_color) > sum(zone_2_color):
-                            return "PARK"
-                        else:
-                            return "PARK"
-                else:
-                    return "N/A"
+                        return "N"
 
-            for i in circles[0, :]:
-                cv2.circle(frame, (i[0], i[1]), i[2], (0, 255, 0), 2)
-                cv2.circle(frame, (i[0], i[1]), 2, (0, 0, 255), 3)
-        showVideo("sign", img)
+    # def detectIntersection(self, frame):
+    #     frame = cv2.medianBlur(frame, 29)
+    #
+    #     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    #
+    #     gray = cv2.bitwise_not(gray)
+    #     bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY, 15, -2)
+    #
+    #     bw = regionOfInterestIntersection(bw)
+    #     # cv2.imshow('bw', bw)
+    #     # Create the images that will use to extract the horizontal and vertical lines
+    #     horizontal = np.copy(bw)
+    #
+    #     # Specify size on horizontal axis
+    #     cols = horizontal.shape[1]
+    #     horizontal_size = cols // 30
+    #     # Create structure element for extracting horizontal lines through morphology operations
+    #     horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal_size, 1))
+    #     # Apply morphology operations
+    #     horizontal = cv2.erode(horizontal, horizontalStructure)
+    #     horizontal = cv2.dilate(horizontal, horizontalStructure)
+    #
+    #     line_segments = []
+    #     line_segments = detectLineSegmentsIntersection(horizontal)
+    #
+    #     if line_segments is None:
+    #         return "N"
+    #     else:
+    #         for line_segment in line_segments:
+    #             for x1, y1, x2, y2 in line_segment:
+    #                 if y1 == y2: # if horizontal line exists
+    #                     return "Y"
+    #                 else:
+    #                     return "N"
+
+
+    def detectSigns(self, frame):
+        sign = cv2.resize(frame, (300,300))
+        (h, w) = sign.shape[:2]
+        blob = cv2.dnn.blobFromImage(cv2.resize(sign, (300, 300)), swapRB=True)
+
+		# grab the frame dimensions and convert it to a blob
+		# pass the blob through the network and obtain the detections and
+		# predictions
+        self.net.setInput(blob)
+        detections = self.net.forward()
+		# loop over the detections
+        for i in np.arange(0, detections.shape[2]):
+			# extract the confidence (i.e., probability) associated with
+			# the prediction
+            confidence = detections[0, 0, i, 2]
+			# filter out weak detections by ensuring the `confidence` is
+			# greater than the minimum confidence
+            if confidence > 0.6:
+				# extract the index of the class label from the
+				# `detections`, then compute the (x, y)-coordinates of
+				# the bounding box for the object
+                idx = int(detections[0, 0, i, 1])
+
+                if self.enableSignFrames:
+                    box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                    (startX, startY, endX, endY) = box.astype("int")
+
+				# draw th prediction on the frame
+                label = "{}: {:.2f}%".format(self.CLASSES[idx-1], confidence * 100)
+
+
+                if self.enableSignFrames:
+                    cv2.rectangle(sign, (startX, startY), (endX, endY), self.COLORS[idx-1], 2)
+                    y = startY - 15 if startY - 15 > 15 else startY + 15
+                    cv2.putText(sign, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLORS[idx-1], 2)
+
+                #cv2.imshow('signs', sign)
+                #cv2.waitKey(1)
+                label = "{}".format(self.CLASSES[idx-1])
+
+                return label
+
 
 #================================ PROCESSING FUNCTIONS FOR LANES ============================================
+# def detectEdges(frame,hue=(40, 140), lum=(177, 255), sat=(0, 111)):
+# old ^
+# def detectEdges(frame,hue=(27, 160), lum=(100, 255), sat=(0, 111)):
+# new ^
+# default values
 
-def detectEdges(frame,hue=(40, 140), lum=(177, 255), sat=(0, 111)):
+
+# def detectEdges(frame,hue=(0, 255), lum=(0, 255), sat=(0, 111)):
+def detectEdges(frame,hue=(27, 160), lum=(80, 255), sat=(0, 255)):
     '''
     '''
+    frame = cv2.medianBlur(frame, 3)
+
     hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
     lower_white = np.array([hue[0],lum[0],sat[0]], dtype=np.uint8)
     upper_white = np.array([hue[1],lum[1],sat[1]], dtype=np.uint8)
@@ -113,14 +166,34 @@ def regionOfInterestLanes(edges):
     height, width = edges.shape
     mask = np.zeros_like(edges)
 
+    # cut a bit from the bottom
+    # polygon = np.array([[
+    #     (0, (height * 1 / 2)),
+    #     (width, (height * 1 / 2)),
+    #     (width, height * 1/1.05),
+    #     (0, height * 1/1.05),
+    # ]], np.int32)
+
     polygon = np.array([[
         (0, (height * 1 / 2)),
         (width, (height * 1 / 2)),
         (width, height),
-        (0, height ),
+        (0, height),
+    ]], np.int32)
+
+    # only car front triangle
+    polygon_front = np.array([[
+        ((width * 1 / 1.4), height * 1/2),
+        ((width * 1 / 3) , height * 1/2),
+        (width * 1/3.1, height),
+        (width * 1/1.3, height),
     ]], np.int32)
 
     cv2.fillPoly(mask, polygon, 255)
+
+    # remove front
+    cv2.fillPoly(mask, polygon_front, 0)
+
     cropped_edges = cv2.bitwise_and(edges, mask)
 
     return cropped_edges
@@ -128,12 +201,13 @@ def regionOfInterestLanes(edges):
 def detectLineSegments(cropped_edges):
     '''
     '''
+
     # tuning min_threshold, minLineLength, maxLineGap is a trial and error process by hand
     rho = 1  # distance precision in pixel, i.e. 1 pixel
     angle = np.pi / 180  # angular precision in radian, i.e. 1 degree
-    min_threshold = 50  # minimal of votes
+    min_threshold = 50
     line_segments = cv2.HoughLinesP(cropped_edges, rho, angle, min_threshold,
-    np.array([]), minLineLength=8, maxLineGap=4)
+    np.array([]), minLineLength=4, maxLineGap=32)
 
     return line_segments
 
@@ -143,10 +217,23 @@ def averageSlopeIntercept(frame, line_segments):
     If all line slopes are < 0: then we only have detected left lane
     If all line slopes are > 0: then we only have detected right lane
     """
+
+    '''
+    numpy warning:
+    Mean of empty slice.
+    avg = a.mean(axis)
+
+    cause for numpy warning:
+
+    when segments for only a single lane line are created
+    numpy.average trips
+    '''
+
     lane_lines = []
     if line_segments is None:
-        print('No line_segment segments detected')
+        # print('No line_segment segments detected')
         return lane_lines
+
 
     height, width, _ = frame.shape
     left_fit = []
@@ -159,7 +246,7 @@ def averageSlopeIntercept(frame, line_segments):
     for line_segment in line_segments:
         for x1, y1, x2, y2 in line_segment:
             if x1 == x2:
-                print('skipping vertical line segment (slope=inf): %s' % line_segment)
+                # print('skipping vertical line segment (slope=inf): %s' % line_segment)
                 continue
             fit = np.polyfit((x1, x2), (y1, y2), 1)
             slope = fit[0]
@@ -179,13 +266,11 @@ def averageSlopeIntercept(frame, line_segments):
     if len(right_fit) > 0:
         lane_lines.append(make_points(frame, right_fit_average))
 
-    #logging.debug('lane lines: %s' % lane_lines)  # [[[316, 720, 484, 432]], [[1009, 720, 718, 432]]]
-
     return lane_lines
 
 
+def displayLines(frame, lines, line_color=(0, 0, 255), line_width=15):
 
-def displayLines(frame, lines, line_color=(0, 0, 255), line_width=25):
     line_image = np.zeros_like(frame)
     if lines is not None:
         for line in lines:
@@ -193,6 +278,31 @@ def displayLines(frame, lines, line_color=(0, 0, 255), line_width=25):
                 cv2.line(line_image, (x1, y1), (x2, y2), line_color, line_width)
     line_image = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
     return line_image
+
+def display_heading_line(frame, steering_angle, line_color=(0, 0, 255), line_width=5):
+
+    heading_image = np.zeros_like(frame)
+    height, width, _ = frame.shape
+
+    # figure out the heading line from steering angle
+    # heading line (x1,y1) is always center bottom of the screen
+    # (x2, y2) requires a bit of trigonometry
+
+    # Note: the steering angle of:
+    # 0-89 degree: turn left
+    # 90 degree: going straight
+    # 91-180 degree: turn right
+    steering_angle_radian = steering_angle / 180.0 * math.pi
+    x1 = int(width / 2)
+    y1 = height
+    x2 = int(x1 - height / 2 / math.tan(steering_angle_radian))
+    y2 = int(height / 2)
+
+
+    cv2.line(heading_image, (x1, y1), (x2, y2), line_color, line_width)
+    heading_image = cv2.addWeighted(frame, 0.8, heading_image, 1, 1)
+
+    return heading_image
 
 
 def make_points(frame, line):
@@ -209,51 +319,40 @@ def make_points(frame, line):
     x2 = max(-width, min(2 * width, int((y2 - intercept) / slope)))
     return [[x1, y1, x2, y2]]
 
-#================================ PROCESSING FUNCTIONS FOR SIGNS ============================================
+#================================ PROCESSING FUNCTIONS FOR INTERSECTION DETECTION ============================================
+
+def detectLineSegmentsIntersection(cropped_edges):
+    '''
+    '''
+
+    # tuning min_threshold, minLineLength, maxLineGap is a trial and error process by hand
+    rho = 1  # distance precision in pixel, i.e. 1 pixel
+    angle = np.pi / 180  # angular precision in radian, i.e. 1 degree
+    min_threshold = 50
+    line_segments = cv2.HoughLinesP(cropped_edges, rho, angle, min_threshold,
+    np.array([]), minLineLength=8, maxLineGap=16)
+
+    return line_segments
 
 
-def get_dominant_color(image, n_colors):
-    pixels = np.float32(image).reshape((-1, 3))
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, .1)
-#cv2.TERM_CRITERIA_EPS stops the algorithm iterations is sfecified accuracy (epsilon 0.1) is reached
-#cv2.TERM_CRITERIA_MAX_ITER stops the algorithm after the specified number of iterations
-
-    flags = cv2.KMEANS_RANDOM_CENTERS
-#the flag is used to specify how initial centers are taken
-
-    flags, labels, centroids = cv2.kmeans(
-        pixels, n_colors, None, criteria, 10, flags)
-    palette = np.uint8(centroids)
-
-# pixels = data type in a single column
-# n_colors = number of colors required
-# NONE = attempts the algorithm is executed using different labels
-# criteria = stops when no of iter or the accuracy is reached
-# flags = tells how initial centers are taken
-
-    return palette[np.argmax(itemfreq(labels)[:, -1])]
-# returns the dominant color by computing the max of the color array
-
-
-def regionOfInterestSigns(frame):
+def regionOfInterestIntersection(frame):
     '''
     '''
     height, width = frame.shape
     mask = np.zeros_like(frame)
 
     polygon = np.array([[
-        (width * 1/3, 0),
-        (width, 0),
-        (width, (height * 1/2)),
-        (width * 1/3, (height * 1/2)),
-    ]], np.int64)
+        ((width * 1 / 1.4), height * 1/1.5),
+        ((width * 1 / 3) , height * 1/1.5),
+        (width * 1/3.1, height * 1/1.1),
+        (width * 1/1.3, height* 1/1.1),
+    ]], np.int32)
 
     cv2.fillPoly(mask, polygon, 255)
     cropped_frame = cv2.bitwise_and(frame, mask)
 
     return cropped_frame
-
-
+################# others #######################
 
 
 def showVideo(title, frame):

@@ -7,13 +7,12 @@ sys.path.append('.')
 import cv2
 import multiprocessing
 from multiprocessing import Process
-from threading import Thread
+from threading import Thread, Event
 
 from src.utils.templates.workerprocess import WorkerProcess
+# from src.data.imageprocessing.writethreadlanes import WriteThreadLanes
 from src.data.imageprocessing.writethread import WriteThreadFrameProc
-from src.data.imageprocessing.frameprocessing import FrameProcessing
-
-
+# from src.data.imageprocessing.signdetect import SignDetection
 
 class FrameProcessingProcess(WorkerProcess):
     #================================ LANE DETECTION PROCESS =====================================
@@ -31,17 +30,14 @@ class FrameProcessingProcess(WorkerProcess):
         daemon : bool, optional
             daemon process flag, by default True
         """
-
         super(FrameProcessingProcess,self).__init__(inPs, outPs)
-
 
     def _init_threads(self):
         '''
         '''
-        writeTh = WriteThreadFrameProc(self.inPs[0], self.outPs[0])
-        self.threads.append(writeTh)
-
-
+        frameProcTh = WriteThreadFrameProc(self.inPs[0], self.outPs[0])
+        self.threads.append(frameProcTh)
 
     def run(self):
         super(FrameProcessingProcess,self).run()
+        
