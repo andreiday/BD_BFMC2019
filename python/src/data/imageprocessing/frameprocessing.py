@@ -23,6 +23,10 @@ class FrameProcessing():
         self.net = cv2.dnn.readNetFromTensorflow(modelpath, graphpath)
         self.enableSignFrames = False
 
+'''
+https://github.com/dctian/DeepPiCar/blob/master/driver/code/hand_coded_lane_follower.py
+'''
+
     def detectLanes(self, frame):
         edges = detectEdges(frame)
 
@@ -94,7 +98,9 @@ class FrameProcessing():
     #                 else:
     #                     return "N"
 
-
+'''
+https://www.pyimagesearch.com/2017/10/16/raspberry-pi-deep-learning-object-detection-with-opencv/
+'''
     def detectSigns(self, frame):
         sign = cv2.resize(frame, (300,300))
         (h, w) = sign.shape[:2]

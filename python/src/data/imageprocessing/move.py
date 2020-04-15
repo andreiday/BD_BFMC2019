@@ -52,7 +52,9 @@ class MoveLogic(object):
 
             return self.curr_steering_angle
 
-
+'''
+https://github.com/dctian/DeepPiCar/blob/master/driver/code/hand_coded_lane_follower.py
+'''
 def compute_steering_angle(frame, lane_lines):
     """ Find the steering angle based on lane line coordinate
         We assume that camera is calibrated to point to dead center
