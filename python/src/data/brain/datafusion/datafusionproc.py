@@ -10,8 +10,9 @@ from multiprocessing import Process
 from threading import Thread
 
 from src.utils.templates.workerprocess import WorkerProcess
-from src.data.brain.move import MoveLogic
-from src.data.brain.writethread import WriteThreadFzz
+
+from src.data.brain.datafusion.displaythread import DisplayThread
+from src.data.brain.datafusion.writethread import WriteThreadFzz
 
 class DataFusionProcess(WorkerProcess):
     def __init__(self, inPs, outPs):
@@ -30,18 +31,14 @@ class DataFusionProcess(WorkerProcess):
         super(DataFusionProcess,self).__init__(inPs, outPs)
 
 
-
     def _init_threads(self):
         '''
         '''
-        writeTh = WriteThreadFzz(self.inPs[0], self.outPs[0])
-        self.threads.append(writeTh)
+        dislayTh = DisplayThread(self.inPs[0])
+        self.threads.append(dislayTh)
+
+        # writeTh = WriteThreadFzz(self.inPs[0], self.outPs[0])
+        # self.threads.append(writeTh)
 
     def run(self):
         super(DataFusionProcess,self).run()
-
-    def displayInfo(self):
-        """Display all parameters on the screen.
-        """
-        # clear stdout for a smoother display
-        os.system('cls' if os.name=='nt' else 'clear')

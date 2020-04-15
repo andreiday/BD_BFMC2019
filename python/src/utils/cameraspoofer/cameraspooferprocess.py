@@ -27,7 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 import sys
 sys.path.append('.')
-
+from imutils.video import FPS
 import cv2
 import glob
 import time
@@ -39,7 +39,7 @@ from src.utils.templates.workerprocess import WorkerProcess
 class CameraSpooferProcess(WorkerProcess):
 
     #================================ INIT ===============================================
-    def __init__(self, inPs,outPs, videoDir, ext = '.h264'):
+    def __init__(self, inPs,outPs, videoDir, ext = '.mp4'):
         """Processed used for spoofing a camera/ publishing a video stream from a folder
         with videos
 
@@ -57,13 +57,14 @@ class CameraSpooferProcess(WorkerProcess):
         super(CameraSpooferProcess,self).__init__(inPs,outPs)
 
         # params
-        self.videoSize = (640,480)
+        # self.videoSize = (640,480)
+        self.videoSize = (300, 300)
 
-        print("viddir: ", videoDir)
 
         self.videoDir = videoDir
         self.videos = self.open_files(self.videoDir, ext = ext)
 
+        print("vid: ", self.videos)
 
     # ===================================== INIT VIDEOS ==================================
     def open_files(self, inputDir, ext):
@@ -107,24 +108,36 @@ class CameraSpooferProcess(WorkerProcess):
         while True:
             for video in videos:
                 cap         =   cv2.VideoCapture(video)
-
+                # time.sleep(2.0)
+                # fps = FPS().start()
+                # self.num_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                # print(self.num_frames)
+                #
+                # while(self.frame_count < self.num_frames):
+                #     pass
+                # else:
                 while True:
                     ret, frame = cap.read()
                     stamp = time.time()
+
                     if ret:
                         frame = cv2.resize(frame, self.videoSize)
 
                         # ----------------------- show images -------------------
-                        cv2.namedWindow('org', cv2.WINDOW_NORMAL)
-                        cv2.imshow('org', frame)
+                        # cv2.namedWindow('org', cv2.WINDOW_NORMAL)
+                        #cv2.imshow('org', frame)
 
                         if cv2.waitKey(1) & 0xFF == ord('q'):
                             break
 
                         for p in self.outPs:
                             p.send([[stamp], frame])
-                        time.sleep(0.05)
+                        time.sleep(0.01)
                     else:
                         break
+
+                # fps.stop()
+                # print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
+
 
                 cap.release()

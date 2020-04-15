@@ -53,6 +53,12 @@ class WriteThread(Thread):
         self.logFile    =  logFile
         self.messageConverter = MessageConverter()
 
+        self.stopCommand = {
+            'action' : 'MCTL',
+            'speed' : float(0.0),
+            'steerAngle' : float(0.0),
+        }
+
     # ===================================== RUN ==========================================
     def run(self):
         """ Represents the thread activity to redirectionate the message.
@@ -61,6 +67,13 @@ class WriteThread(Thread):
             command = self.inP.recv()
             command_msg = self.messageConverter.get_command(**command)
 
-            print("COMMAND MSG: ", command_msg)
+            # print("COMMAND ", command_msg)
             self.serialCom.write(command_msg.encode('ascii'))
             self.logFile.write(command_msg)
+
+    def stop(self):
+        '''
+        sends stop command to motors when killed
+        '''
+        command_msg = self.messageConverter.get_command(**self.stopCommand)
+        self.serialCom.write(command_msg.encode('ascii'))

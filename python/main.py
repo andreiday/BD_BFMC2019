@@ -24,18 +24,21 @@ from src.utils.cameraspoofer.cameraspooferprocess  import CameraSpooferProcess
 # image processing imports
 from src.data.imageprocessing.frameprocessingprocess import FrameProcessingProcess
 
-# temporarly purposed as data fusion & decision maker
-from src.data.brain.datafusionproc import DataFusionProcess
+# import datafusion process
+# from src.data.brain.datafusion.datafusionproc import DataFusionProcess
+
+# import decision making process
+from src.data.brain.decisionmaking.decisionmakingproc import DecisionMakingProcess
 
 # temporarly purposed as controller
-from src.data.consumer.consumerprocess import Consumer as ControllerProcess
-
+# from src.data.consumer.consumerprocess import Consumer as ControllerProcess
+from src.data.brain.controller.controllerprocess import ControllerProcess
 # udp data sending & receiving imports
-from src.utils.camerastreamer.camerareceiver import CameraReceiver as UnityReceiver
+# from src.utils.camerastreamer.camerareceiver import CameraReceiver as UnityReceiver
 
 dir = os.path.join("src","vid")
 
-commSerial = False
+commSerial = True
 
 def main():
     #================================ PROCESSES ==============================================
@@ -43,10 +46,18 @@ def main():
 
 
     camR, camS = Pipe(duplex = False)
-    dataFzzIn, frameProcDataOut = Pipe(duplex = False)
-    controllerIn, dataFzzOut = Pipe(duplex = False)
-    serialRecv, controllerOut = Pipe(duplex = False)
+    frameR, frameS = Pipe(duplex = False)
+    # cntR, decS = Pipe(duplex = False)
+    serialR, decS = Pipe(duplex = False)
 
+    # dataFzzIn, frameProcDataOut = Pipe(duplex = False)
+    # decisionIn, dataFzzOut = Pipe(duplex = False)
+    # with controller process
+    # controllerIn, decisionOut = Pipe(duplex = False)
+    # serialRecv, controllerOut = Pipe(duplex = False)
+
+    # without controller process
+    # serialRecv, decisionOut = Pipe(duplex = False)
 
 
     #================================ CAMERA Handler ==============================================
@@ -54,21 +65,24 @@ def main():
     allProcesses.append(camSpoofer)
 
     #================================ Frameprocessing process ==============================================
-    frameProcessing = FrameProcessingProcess([camR], [frameProcDataOut])
+    frameProcessing = FrameProcessingProcess([camR], [frameS])
     allProcesses.append(frameProcessing)
 
-    #================================ Movement process ==============================================
-    dataFusionProc = DataFusionProcess([dataFzzIn], [dataFzzOut])
-    allProcesses.append(dataFusionProc)
+    # #================================ Movement process ==============================================
+    # dataFusionProc = DataFusionProcess([dataFzzIn], [dataFzzOut])
+    # allProcesses.append(dataFusionProc)
 
-    #================================ CONTROLLER ==============================================
-    controllerProc = ControllerProcess([controllerIn],[controllerOut])
-    allProcesses.append(controllerProc)
-
+    #================================ Decision making proc ==========================================
+    decisionMakingProc = DecisionMakingProcess([frameR], [decS])
+    allProcesses.append(decisionMakingProc)
+    #
+    # #================================ CONTROLLER ==============================================
+    # controllerProc = ControllerProcess([cntR],[cntS])
+    # allProcesses.append(controllerProc)
 
     #================================ Serial     ==============================================
     if commSerial:
-        serialProc = SerialHandler([serialRecv],[])
+        serialProc = SerialHandler([serialR],[])
         allProcesses.append(serialProc)
 
     #================================ PROCESS HANDLER ==============================================
