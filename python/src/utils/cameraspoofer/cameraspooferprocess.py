@@ -26,20 +26,23 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 import sys
-sys.path.append('.')
-from imutils.video import FPS
 import cv2
 import glob
 import time
-
-from threading       import Thread
-
 from src.utils.templates.workerprocess import WorkerProcess
+from threading import Thread
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+sys.path.append('.')
 
 class CameraSpooferProcess(WorkerProcess):
 
     #================================ INIT ===============================================
-    def __init__(self, inPs,outPs, videoDir, ext = '.mp4'):
+    def __init__(self, inPs, outPs, videoDir, ext = '.h264'):
         """Processed used for spoofing a camera/ publishing a video stream from a folder
         with videos
 
@@ -54,20 +57,20 @@ class CameraSpooferProcess(WorkerProcess):
         ext : str, optional
             the extension of the file, by default '.h264'
         """
-        super(CameraSpooferProcess,self).__init__(inPs,outPs)
+        super(CameraSpooferProcess, self).__init__(inPs, outPs)
 
         # params
-        # self.videoSize = (640,480)
-        self.videoSize = (300, 300)
-
+        self.videoSize = (640, 480)
 
         self.videoDir = videoDir
-        self.videos = self.open_files(self.videoDir, ext = ext)
+        self.videos = self._open_files(self.videoDir, ext=ext)
 
-        print("vid: ", self.videos)
+        logging.info('Loading video...')
+
+        logging.debug("vid: ", self.videos)
 
     # ===================================== INIT VIDEOS ==================================
-    def open_files(self, inputDir, ext):
+    def _open_files(self, inputDir, ext):
         """Open all files with the given path and extension
 
         Parameters
@@ -83,7 +86,7 @@ class CameraSpooferProcess(WorkerProcess):
             A list of the files in the folder with the specified file extension.
         """
 
-        files =  glob.glob(inputDir + '/*' + ext)
+        files = glob.glob(inputDir + '/*' + ext)
 
         return files
 
@@ -92,9 +95,8 @@ class CameraSpooferProcess(WorkerProcess):
         """Initialize the thread of the process.
         """
 
-        thPlay = Thread(name='VideoPlayerThread',target= self.play_video, args=(self.videos, ),daemon=True)
+        thPlay = Thread(name='VideoPlayerThread', target=self.play_video, args=(self.videos, ))
         self.threads.append(thPlay)
-
 
     # ===================================== PLAY VIDEO ===================================
     def play_video(self, videos):
@@ -107,15 +109,10 @@ class CameraSpooferProcess(WorkerProcess):
         """
         while True:
             for video in videos:
-                cap         =   cv2.VideoCapture(video)
-                # time.sleep(2.0)
+                cap = cv2.VideoCapture(video)
+
                 # fps = FPS().start()
-                # self.num_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-                # print(self.num_frames)
-                #
-                # while(self.frame_count < self.num_frames):
-                #     pass
-                # else:
+
                 while True:
                     ret, frame = cap.read()
                     stamp = time.time()
@@ -124,20 +121,21 @@ class CameraSpooferProcess(WorkerProcess):
                         frame = cv2.resize(frame, self.videoSize)
 
                         # ----------------------- show images -------------------
-                        # cv2.namedWindow('org', cv2.WINDOW_NORMAL)
+                        #cv2.namedWindow('org', cv2.WINDOW_NORMAL)
                         #cv2.imshow('org', frame)
 
                         if cv2.waitKey(1) & 0xFF == ord('q'):
                             break
 
+                        time.sleep(0.01)
+
                         for p in self.outPs:
                             p.send([[stamp], frame])
-                        time.sleep(0.01)
+
                     else:
                         break
 
-                # fps.stop()
-                # print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
-
-
                 cap.release()
+
+    def stop(self):
+        super(CameraSpooferProcess, self).stop()

@@ -75,7 +75,7 @@ class ThreadWithStop(Thread):
                 kwargs['target'] = partial(kwargs['target'],self)
             else:
                 raise ValueError("target parameter must be a unbounded function")
-        super(ThreadWithStop,self).__init__(*args,**kwargs)
+        super(ThreadWithStop, self).__init__(*args, **kwargs)
         self._running = True
 
     def stop(self):

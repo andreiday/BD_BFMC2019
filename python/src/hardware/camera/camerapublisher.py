@@ -78,11 +78,11 @@ class CameraPublisher(ThreadWithStop):
         self.camera = PiCamera()
 
         # camera settings
-        self.camera.resolution      =   (1640,1232)
-        self.camera.framerate       =   15
+        self.camera.resolution      =   (640,480)
+        self.camera.framerate       =   30
 
         self.camera.brightness      =   50
-        self.camera.shutter_speed   =   1200
+        self.camera.shutter_speed   =   19000
         self.camera.contrast        =   0
         self.camera.iso             =   0 # auto
 
@@ -111,18 +111,19 @@ class CameraPublisher(ThreadWithStop):
         self.camera.capture_sequence(
                                     self._streams(),
                                     use_video_port  =   True,
-                                    format          =   'rgb',
+                                    format          =   'bgr',
                                     resize          =   self.imgSize)
         # record mode
         if self.recordMode:
             self.camera.stop_recording()
+
 
     #================================ STREAMS ============================================
     def _streams(self):
         """Stream function that actually published the frames into the pipes. Certain
         processing(reshape) is done to the image format.
         """
-        i = 0
+        # i = 0
 
         while self._running:
 
@@ -137,9 +138,15 @@ class CameraPublisher(ThreadWithStop):
 
             # output image and time stamp
             # Note: The sending process can be blocked, when doesn't exist any consumer process and it reaches the limit size.
+            # cv2.namedWindow('org', cv2.WINDOW_NORMAL)
+            # cv2.imshow('org', data)
+            #
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     break
+
             for outP in self.outPs:
                 outP.send([[stamp], data])
-
+            # time.sleep(0.01)
 
             self._stream.seek(0)
             self._stream.truncate()

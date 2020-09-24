@@ -27,9 +27,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 import multiprocessing
 from multiprocessing import Process
-
+import logging
 from src.utils.templates.workerprocess import WorkerProcess
 from src.hardware.camera.camerapublisher import CameraPublisher
+logging.basicConfig(format='%(process)d-%(levelname)s-%(message)s')
 
 class CameraProcess(WorkerProcess):
     #================================ CAMERA PROCESS =====================================

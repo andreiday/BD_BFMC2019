@@ -93,4 +93,5 @@ class WorkerProcess(Process):
         """This method stops the process by set the event, which has role to block the running of process, while the subthread executes their functionalities.
         The main process or other process throught this method can stop the running of this process.
         """
+
         self._blocker.set()
