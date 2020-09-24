@@ -1,0 +1,2 @@
+receives information from imageprocessing process and *eventually* serialhandler process
+sends information to SerialHandler process
