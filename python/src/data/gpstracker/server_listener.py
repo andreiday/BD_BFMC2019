@@ -25,11 +25,13 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
-
+import logging
 import socket
 import sys
 sys.path.insert(0,'.')
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
 
 class ServerListener: 
 	""" ServerListener aims to find the server, it waiting a broadcast message on predefined prot.
@@ -42,9 +44,7 @@ class ServerListener:
 	def __init__(self, server_data):
 		#: ServerData object, which contains all parameter of the server.
 		self.__server_data = server_data
-
 		self.__running = True
-
 
 	def stop(self):
 		self.__running = False
@@ -56,8 +56,7 @@ class ServerListener:
 		After receiving a message it converts to integer value. 
 		After a successfull conversation it closes the process, which follows the subscription. 
 		"""
-		
-		
+
 		try:
 			#: create a datagram socket for intramachine use
 			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -68,7 +67,7 @@ class ServerListener:
 			
 			#: Listen for server broadcast 
 			s.settimeout(1)
-			
+	
 			#: flag
 			foundServer = False
 			while (not foundServer) and self.__running:
@@ -88,7 +87,7 @@ class ServerListener:
 					foundServer  = True
 				except socket.timeout as e:
 					# Cannot find the server. Need to repeat the process.
-					print("time out")
+					logger.info("time out")
 					pass
 				except ValueError as e:
 					# Wrong message was received. Need to repeat the process.
@@ -97,6 +96,6 @@ class ServerListener:
 		except Exception as e:
 			# Cannot initialize the socket for broadcast message listening or other unexpected error.   
 			self.__server_data.serverip = None	# Server is dead
-			print ("Error:" + str(e))
+			logger.exception("Error:" + str(e))
 		finally:
 			s.close()

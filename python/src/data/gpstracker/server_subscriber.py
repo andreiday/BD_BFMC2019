@@ -68,7 +68,7 @@ class ServerSubscriber:
 			# receiving signature from the server
 			signature = sock.recv(4096)[:-1]
 			# verifying the server authentication
-			is_signature_correct = verify_data(self.__public_key,msg,signature)
+			is_signature_correct = verify_data(self.__public_key, msg, signature)
 
 			# checking the parameters
 			if (msg == '' or signature == '' or not is_signature_correct):

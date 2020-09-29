@@ -25,18 +25,16 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
-
 import sys
-sys.path.insert(0,'.')
-
+sys.path.insert(0, '.')
 """ServerData class contains all parameter of server. It need to connect to the server.
 The parameters is updated by other class, like ServerListener and SubscribeToServer
 """
-class ServerData:
 
-	def __init__(self, server_IP='192.168.1.207', beacon_port=12346):
-		#: ip address of server 
-		self.__server_ip = server_IP 
+class ServerData:
+	def __init__(self, server_IP='<broadcast>', beacon_port=12346):
+		#: ip address of server
+		self.__server_ip = server_IP
 		#: flag to mark, that the server is new. It becomes false, when the client subscribed on the server.
 		self.is_new_server = False
 		#: port, where the beacon server send broadcast messages
@@ -45,7 +43,6 @@ class ServerData:
 		self.carSubscriptionPort = None
 		#: connection, which used to communicate with the server
 		self.socket = None
-
 	
 	@property
 	def beacon_port(self):

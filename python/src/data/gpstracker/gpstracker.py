@@ -26,14 +26,17 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 import threading
+import logging
 from src.data.gpstracker import server_data
 from src.data.gpstracker import server_listener
 from src.data.gpstracker import server_subscriber
 from src.data.gpstracker import position_listener
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class GpsTracker(threading.Thread):
-    
+
     def __init__(self):
         """ GpsTracker targets to connect on the server and to receive the messages, which incorporates 
         the coordinate of the robot on the race track. It has two main state, the setup state and the listening state. 
@@ -52,6 +55,7 @@ class GpsTracker(threading.Thread):
             | gpstracker.join()
 
         """
+        logger.info("Starting GPS Tracker")
         super().__init__()
         #: serverData object with server parameters
         self.__server_data = server_data.ServerData()
@@ -61,7 +65,7 @@ class GpsTracker(threading.Thread):
         self.__subscriber = server_subscriber.ServerSubscriber(self.__server_data, 1)
         #: receive and decode the messages from the server
         self.__position_listener = position_listener.PositionListener(self.__server_data)
-        
+        self.__daemon = True
         self.__running = True
 
     def setup(self):
@@ -74,8 +78,7 @@ class GpsTracker(threading.Thread):
             if self.__server_data.is_new_server and self.__running:
                 # connect to the server 
                 self.__subscriber.subscribe()
-        
-    
+
     def listen(self):
         """ Listening the coordination of robot
         """
@@ -85,8 +88,7 @@ class GpsTracker(threading.Thread):
         while(self.__running):
             self.setup()
             self.listen()
-            
-    
+
     def coor(self):
         """Access to the last receive coordinate
         

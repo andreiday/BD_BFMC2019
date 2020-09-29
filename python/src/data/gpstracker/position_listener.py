@@ -25,15 +25,15 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
-
 import sys
-sys.path.insert(0,'.')
-
 import socket
 import json
+import logging
 from src.data.gpstracker.complexdecoder import ComplexDecoder
+sys.path.insert(0,'.')
 
-
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class PositionListener:
 	"""PositionListener aims to receive all message from the server. 
@@ -42,7 +42,7 @@ class PositionListener:
 		
 		self.__server_data = server_data 
 		self.socket_pos = None
-
+		self.daemon = True
 		self.coor = None
 
 		self.__running = True
@@ -59,28 +59,30 @@ class PositionListener:
 		system, the client will receive the same coordinate and timestamp. 
 		"""
 		while self.__running:
-			if self.__server_data.socket != None: 
+			if self.__server_data.socket is not None:
 				try:
 					msg = self.__server_data.socket.recv(4096)
-
 					msg = msg.decode('utf-8')
 					if(msg == ''):
-						print('Invalid message. Connection can be interrupted.')
+						logger.info('Invalid message. Connection can be interrupted.')
 						break
+
 					coor = json.loads(msg, cls=ComplexDecoder)
+					logger.debug(coor)
 					self.coor = coor
+
 				except socket.timeout:
 					# the socket was created successfully, but it wasn't received any message. Car with id wasn't detected before. 
 					pass
+
 				except Exception as e:
 					self.__server_data.socket.close()
 					self.__server_data.socket = None
-					print("Receiving position data from server " + str(self.__server_data.serverip) + " failed with error: " + str(e))
+					logger.exception("Receiving position data from server " + str(self.__server_data.serverip) + " failed with error: " + str(e))
 					self.__server_data.serverip = None
 					break
 			else:
-				print("Wrong server data socket")
-			
-	
+				logger.info("Wrong server data socket")
+
 		self.__server_data.socket = None
 		self.__server_data.serverip = None

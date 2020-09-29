@@ -33,8 +33,8 @@ class ComplexDecoder(json.JSONDecoder):
 			{'type':'complex','real':1.0,'imag':1/0}
 		It will return a complex number object.
 	"""
-	def __init__(self,*args,**kwargs):
-		super().__init__(object_hook=self.object_hook,*args,**kwargs)
+	def __init__(self, *args, **kwargs):
+		super().__init__(object_hook=self.object_hook, *args, **kwargs)
 
 	def object_hook(self,dct):
 		# Checking the parameters of dictionary. 
