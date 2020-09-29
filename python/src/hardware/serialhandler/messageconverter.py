@@ -46,8 +46,8 @@ class MessageConverter:
                 'MCTL' : [ ['speed','steerAngle'],[float, float],  [True]  ],
                 'BRAK' : [ ['steerAngle' ],       [float],         [False] ],
                 'PIDA' : [ ['activate'],       [ bool],         [False] ],
-                'SFBR' : [ ['activate'],       [ bool],         [False] ],
-                'DSPB' : [ ['activate'],       [ bool],         [False] ],
+                #'SFBR' : [ ['activate'],       [ bool],         [False] ],
+                #'DSPB' : [ ['activate'],       [ bool],         [False] ],
                 'ENPB' : [ ['activate'],       [ bool],         [False] ],
 
                 # optional commands

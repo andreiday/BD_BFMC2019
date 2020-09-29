@@ -11,26 +11,30 @@ logger.setLevel(logging.ERROR)
 sys.path.append('.')
 
 dir = os.path.join("src", "utils", "models")
+
 signsModelPath = os.path.join(dir, "signs",  "ssdlite_mobilenet_v2_coco.pb")
 signGraphPath = os.path.join(dir, "signs", "graph.pbtxt")
 lanesModelPath = os.path.join(dir, "lanes",  "keras_model.h5")
 
+# enable keras lane follower model
 MLFollower = False
 
+# enable intel neural computing stick communication
+NCSigns = False
 
 class DetectionProcessing():
-
     def __init__(self):
+        # init signs
         logger.info('Init detection processing...')
 
-        # init signs
         self.net = cv2.dnn.readNetFromTensorflow(signsModelPath, signGraphPath)
-        self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD)
-        self.CLASSES = ["park", "pedestrians", "priority", "stop"]
-        self.COLORS = np.random.uniform(0, 255, size=(len(self.CLASSES), 3))
+
+        if NCSigns:
+            self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD)
+
         self.enableDrawSigns = True
 
-        # init lame follower
+        # init LaMe follower
         if MLFollower:
             from keras.models import load_model
             self.lanesModel = load_model(lanesModelPath)
@@ -91,6 +95,9 @@ class DetectionProcessing():
                         return "N"
 
     def detectSigns(self, frame):
+        self.CLASSES = ["park", "pedestrians", "priority", "stop"]
+        self.COLORS = np.random.uniform(0, 255, size=(len(self.CLASSES), 3))
+
         sign = cv2.resize(frame, (300, 300))
         (h, w) = sign.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(sign, (300, 300)), swapRB=True)
@@ -154,13 +161,26 @@ def detectEdges(frame, hue=(27, 160), lum=(80, 255), sat=(0, 255)):
     frame = cv2.medianBlur(frame, 3)
 
     hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
-    lower_white = np.array([hue[0],lum[0],sat[0]], dtype=np.uint8)
-    upper_white = np.array([hue[1],lum[1],sat[1]], dtype=np.uint8)
+    lower_white = np.array([hue[0], lum[0], sat[0]], dtype=np.uint8)
+    upper_white = np.array([hue[1], lum[1], sat[1]], dtype=np.uint8)
     mask = cv2.inRange(hls, lower_white, upper_white)
     edges = cv2.Canny(mask, 200, 400)
 
     return edges
 
+'''
+# Nvidia model said it is best to use YUV color space
+def detectEdgesNvidia(frame, hue=(27, 160), lum=(80, 255), sat=(0, 255)):
+    frame = cv2.medianBlur(frame, 3)
+
+    hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+    lower_white = np.array([hue[0], lum[0], sat[0]], dtype=np.uint8)
+    upper_white = np.array([hue[1], lum[1], sat[1]], dtype=np.uint8)
+    mask = cv2.inRange(hls, lower_white, upper_white)
+    edges = cv2.Canny(mask, 200, 400)
+
+    return edges
+'''
 
 def regionOfInterestLanes(edges):
     '''
@@ -186,7 +206,7 @@ def regionOfInterestLanes(edges):
     # only car front triangle
     polygon_front = np.array([[
         ((width * 1 / 1.4), height * 1/2),
-        ((width * 1 / 3) , height * 1/2),
+        ((width * 1 / 3), height * 1/2),
         (width * 1/3.1, height),
         (width * 1/1.3, height),
     ]], np.int32)
@@ -194,7 +214,7 @@ def regionOfInterestLanes(edges):
     cv2.fillPoly(mask, polygon, 255)
 
     # remove front
-    # cv2.fillPoly(mask, polygon_front, 0)
+    cv2.fillPoly(mask, polygon_front, 0)
 
     cropped_edges = cv2.bitwise_and(edges, mask)
 
@@ -250,7 +270,7 @@ def averageSlopeIntercept(frame, line_segments):
     for line_segment in line_segments:
         for x1, y1, x2, y2 in line_segment:
             if x1 == x2:
-                logger.info('skipping vertical line segment (slope=inf): %s' % line_segment)
+                logger.debug('skipping vertical line segment (slope=inf): %s' % line_segment)
                 continue
             fit = np.polyfit((x1, x2), (y1, y2), 1)
             slope = fit[0]

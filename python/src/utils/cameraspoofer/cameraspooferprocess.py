@@ -33,7 +33,6 @@ from src.utils.templates.workerprocess import WorkerProcess
 from threading import Thread
 import logging
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -60,14 +59,12 @@ class CameraSpooferProcess(WorkerProcess):
         super(CameraSpooferProcess, self).__init__(inPs, outPs)
 
         # params
-        self.videoSize = (640, 480)
+        self.videoSize = (800, 600)
 
         self.videoDir = videoDir
         self.videos = self._open_files(self.videoDir, ext=ext)
 
         logging.info('Loading video...')
-
-        logging.debug("vid: ", self.videos)
 
     # ===================================== INIT VIDEOS ==================================
     def _open_files(self, inputDir, ext):
@@ -109,6 +106,8 @@ class CameraSpooferProcess(WorkerProcess):
         """
         while True:
             for video in videos:
+                logging.debug('Current video: {}'.format(video))
+
                 cap = cv2.VideoCapture(video)
 
                 # fps = FPS().start()

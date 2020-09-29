@@ -66,7 +66,7 @@ class DataSend(WorkerProcess):
         # if self._blocker.is_set():
         #     return
 
-        sendTh = Thread(name='DataStream Sending',target = self._send_thread, args= (self.inPs, ))
+        sendTh = Thread(name='DataStream Sending',target=self._send_thread, args=(self.inPs, ))
         sendTh.daemon = True
         self.threads.append(sendTh)
 
@@ -74,7 +74,7 @@ class DataSend(WorkerProcess):
     def _init_socket(self):
         """Initialize the socket.
         """
-        self.client_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.client_socket.connect((self.serverIp, self.port))
         # Trying repeatedly to connect the UnityReceiver.
         # try:
@@ -100,7 +100,7 @@ class DataSend(WorkerProcess):
                 for p in self.inPs:
                     data = p.recv()
 
-                stamped_data = [[stamp],data]
+                stamped_data = [[stamp], data]
 
                 stamped_data = str(stamped_data).encode()
                 print(stamped_data)
@@ -108,7 +108,7 @@ class DataSend(WorkerProcess):
                 self.client_socket.sendto(stamped_data, self.server_address)
 
         except Exception as e:
-            print("Failed to transmit data:" , e ,"\n")
+            print("Failed to transmit data:", e, "\n")
             # Reinitialize the socket for reconnecting to client.
             self.client_socket.close()
             self._init_socket()

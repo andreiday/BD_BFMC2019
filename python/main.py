@@ -29,6 +29,7 @@
 # will start all the processes with their threads
 import sys
 import os
+import logging
 
 from multiprocessing import Pipe, Event
 
@@ -47,23 +48,38 @@ from src.brain.decisionmaking.decisionmakingproc import DecisionMakingProcess
 from src.brain.datafusion.datafusionproc import DataFusionProcess
 
 # utility imports
+from src.utils.camerastreamer.camerareceiver import CameraReceiver
 from src.utils.cameraspoofer.cameraspooferprocess import CameraSpooferProcess
 
-# others
+# camera flags
+
+spoof_b = True                  # enable camera spoofer
+unityRecv_b = False
 
 
-# udp data sending & receiving imports
-# from src.utils.camerastreamer.camerareceiver import CameraReceiver
-
-commSerial_b = False          # enable serial communication
-spoof_b = True                # enable camera spoofer
-gps_b = True                  # enable gps communication
+# data flags
+gps_b = True                   # enable gps communication
 objDet_b = True
 laneDet_b = True
 flowTest_b = False
 
+# HW flags
+commSerial_b = False            # enable serial communication (controller & serial handler)
+
+# others
 sys.path.append('.')
 dir = os.path.join("src", "vid")
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+consoleHandler = logging.StreamHandler()
+consoleHandler.setLevel(logging.DEBUG)
+
+logger.addHandler(consoleHandler)
+
+formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
+consoleHandler.setFormatter(formatter)
 
 
 def main():
@@ -72,6 +88,7 @@ def main():
     allProcesses = list()
     allCamPipes = list()
     allDataFzzInPipes = list()
+    allEnvCommOutPipes = list()
 
     # pipes description
 
@@ -80,19 +97,24 @@ def main():
     # objCamRecv            - input for object detection process
 
     laneCamRecv, laneCamSend = Pipe(duplex=False)
-    objCamRecv, objCamSend = Pipe(duplex=False)
+
+    if objDet_b:
+        objCamRecv, objCamSend = Pipe(duplex=False)
 
 
-    # fzzIn        - input for data fusion process from:
-    # laneOut      - output from lane detection process             TODO
-    # objDetOut    - output from object recognition process         TODO
-    # gpsOut       - output from gps process                        TODO
+    # allDataFzzInPipes        - input for data fusion process from:
+    # laneFzzSend                  - output from lane detection process
+    # objFzzSend                - output from object recognition process         TODO
+    # gpsFzzSend                    - output from gps process
 
-    laneFzzRecv, laneFzzSend = Pipe(duplex=False)
-    objFzzRecv, objFzzSend = Pipe(duplex=False)
+    if laneDet_b:
+        laneFzzRecv, laneFzzSend = Pipe(duplex=False)
 
-    #if gps_b:
-    #    gpsFzzRecv, gpsFzzSend = Pipe(duplex=False)
+    if objDet_b:
+        objFzzRecv, objFzzSend = Pipe(duplex=False)
+
+    if gps_b:
+        gpsFzzRecv, gpsFzzSend = Pipe(duplex=False)
 
     # fzzOut       - output from data fusion process to:
     # decIn        - input for decision making process              TODO
@@ -109,14 +131,16 @@ def main():
         cntIn, decOut = Pipe(duplex=True)       # controller I/O <=> decision making I/O
         serialIn, cntOut = Pipe(duplex=True)    # controller I/O <=> serial I/O
 
-    allCamPipes.append(laneCamSend)
-    allCamPipes.append(objCamSend)
+    if objDet_b:
+        allCamPipes.append(objCamSend)
+        allDataFzzInPipes.append(objFzzRecv)
+    
+    if laneDet_b:
+        allCamPipes.append(laneCamSend)
+        allDataFzzInPipes.append(laneFzzRecv)
 
-    allDataFzzInPipes.append(laneFzzRecv)
-    allDataFzzInPipes.append(objFzzRecv)
-
-    #if gps_b:
-    #    allDataFzzInPipes.append(gpsFzzRecv)
+    if gps_b:
+        allDataFzzInPipes.append(gpsFzzRecv)
 
     #
     # ================================ CAMERA Handler ==============================================
@@ -124,17 +148,20 @@ def main():
     #       - input ([])            :   []
     #       - output ([camOut])     :   [[stamps], frame]]
 
-    if spoof_b:
+    if spoof_b and not unityRecv_b:
         camSpoofer = CameraSpooferProcess([], allCamPipes, dir)
         allProcesses.append(camSpoofer)
+    elif unityRecv_b:
+        camUnityProc = CameraReceiver([], allCamPipes)
+        allProcesses.append(camUnityProc)
     else:
         camHwPi = CameraProcess([], allCamPipes)
         allProcesses.append(camHwPi)
 
     # ================================ Lane detection process =============================================
     # create process with :
-    #       - input ([laneIn])      :   [[stamps], frame]]
-    #       - output ([laneOut])    :
+    #       - input ([laneCamRecv])      :   [[stamps], frame]]
+    #       - output ([laneFzzSend])    :
 
     if laneDet_b:
         laneDetection = LaneDetectionProcess([laneCamRecv], [laneFzzSend])
@@ -143,18 +170,17 @@ def main():
 
     # ================================ Object detection process =============================================
     # create process with :
-    #       - input ([objDetIn])      :   [[stamps], frame]]
-    #       - output ([objDetOut])    :
+    #       - input ([objCamRecv])      :   [[stamps], frame]]
+    #       - output ([objFzzSend])    :
 
     if objDet_b:
         objDetection = ObjectDetectProcess([objCamRecv], [objFzzSend])
         allProcesses.append(objDetection)
 
     if gps_b:
-        gpsProcess = GPSProcess([], [])
+        gpsProcess = GPSProcess([], [gpsFzzSend])
         allProcesses.append(gpsProcess)
-   
-   
+
     # ================================ Data fusion process ==============================================
     # create process with :
     #       - input ([fzzIn])            :
@@ -177,7 +203,7 @@ def main():
     #       - input ([cntIn])            :   []
     #       - output ([cntOut])          :   []
     if commSerial_b:
-        controllerProc = ControllerProcess([cntIn],[cntOut])
+        controllerProc = ControllerProcess([cntIn], [cntOut])
         allProcesses.append(controllerProc)
 
     # ================================ Serial Handler ================================================
@@ -185,12 +211,12 @@ def main():
     #       - input ([serialIn])    :   []
     #       - output ([])     :   []
 
-        serialProc = SerialHandler([serialIn],[])
+        serialProc = SerialHandler([serialIn], [])
         allProcesses.append(serialProc)
 
     # ================================ PROCESS HANDLER ==============================================
-
-    print("Starting the processes!")
+    logger.info("Starting the processes!")
+    
     print(allProcesses)
     for proc in allProcesses:
         proc.daemon = True
@@ -203,7 +229,7 @@ def main():
 
     except KeyboardInterrupt:
 
-        print("\nCatching a KeyboardInterruption exception! Shutdown all processes.\n")
+        logger.info("\nCatching a KeyboardInterruption exception! Shutdown all processes.\n")
         for proc in allProcesses:
             if hasattr(proc, 'stop') and callable(getattr(proc, 'stop')):
                 print("Process with stop", proc)

@@ -33,14 +33,12 @@ from src.utils.imageprocessing.frameprocessing import DetectionProcessing
 from src.utils.imageprocessing.move import MoveLogic
 import logging
 
-logging.basicConfig(format='%(asctime)d - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)
 
 sys.path.append('.')
 
 MLFollower = False
-
 
 class LaneDetThread(ThreadWithStop):
     def __init__(self, inP, outP):
@@ -67,10 +65,11 @@ class LaneDetThread(ThreadWithStop):
                     steering_angle = self.moveLogic.getSteer(frame, lane_lines)
                     steering_angle = round(steering_angle, 3)
 
+                logger.debug("Steering angle: {}".format(steering_angle))
+
                 self.outPs.send([[stamps], steering_angle])
 
         except Exception as e:
-            logging.exception(os.path.realpath(__file__))
             logging.exception("Failed:", e, "\n")
             pass
 

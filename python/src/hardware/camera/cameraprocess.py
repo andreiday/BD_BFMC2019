@@ -25,12 +25,8 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
-import multiprocessing
-from multiprocessing import Process
-import logging
 from src.utils.templates.workerprocess import WorkerProcess
 from src.hardware.camera.camerapublisher import CameraPublisher
-logging.basicConfig(format='%(process)d-%(levelname)s-%(message)s')
 
 class CameraProcess(WorkerProcess):
     #================================ CAMERA PROCESS =====================================

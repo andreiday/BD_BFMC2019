@@ -26,14 +26,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 import sys
-import os
 import time
 from src.utils.templates.threadwithstop import ThreadWithStop
 from src.utils.imageprocessing.frameprocessing import DetectionProcessing
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 sys.path.append('.')
 
@@ -69,17 +68,13 @@ class SignThread(ThreadWithStop):
 
                 self.detected_sign = str(self.detected_sign)
 
-                logging.debug("Detected sign: {}".format(self.detected_sign))
-
                 if self.enableDetection is False and time.time()-enabled > 0.25:
+                    # logging.debug("Detected sign: {}".format(self.detected_sign))
                     self.enableDetection = True
-
-                logging.debug("sign:", stamps)
 
                 self.outPs.send([[stamps], self.detected_sign])
 
         except Exception as e:
-            logging.exception(os.path.realpath(__file__))
             logging.exception("Failed:", e, "\n")
             pass
 

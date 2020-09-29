@@ -26,27 +26,19 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 import sys
-sys.path.append('.')
-
 import time
 import socket
-import struct
 import numpy as np
-
-
 import cv2
 from threading import Thread
-
-import multiprocessing
-from multiprocessing import Process,Event
-
 from src.utils.templates.workerprocess import WorkerProcess
-
+sys.path.append('.')
 
 class CameraReceiver(WorkerProcess):
     # ===================================== INIT =========================================
     def __init__(self, inPs, outPs):
-        """Process used for receiving frames from unity. It receives the images from unity and pipes through the output pipe. The idea is to apply the imageprocessing algorithms on the simulation frames and then send data back to unity to be used in ML agents.
+        """Process used for receiving frames from unity. It receives the images from unity and pipes through the output pipe. 
+        The idea is to apply the imageprocessing algorithms on the simulation frames and then send data back to unity to be used in ML agents.
 
         Parameters
         ----------
@@ -55,35 +47,31 @@ class CameraReceiver(WorkerProcess):
         outPs : list(Pipe)
             List of output pipes
         """
-        super(CameraReceiver,self).__init__(inPs, outPs)
+        super(CameraReceiver, self).__init__(inPs, outPs)
 
-        self.port       =   2244
-        self.serverIp   =   '192.168.1.254'
+        self.port = 1234
+        self.serverIp = '0.0.0.0'
 
-        self.imgSize    = (480,640,3)
+        self.imgSize = (480, 640, 3)
     # ===================================== RUN ==========================================
     def run(self):
         """Apply the initializers and start the threads.
         """
         self._init_socket()
-        super(CameraReceiver,self).run()
+        super(CameraReceiver, self).run()
 
     # ====================== =============== INIT SOCKET ==================================
     def _init_socket(self):
         """Initialize the socket.
         """
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        #self.server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
         self.server_socket.bind((self.serverIp, self.port))
-
-        #self.server_socket.listen(0)
-
 
     # ===================================== INIT THREADS =================================
     def _init_threads(self):
         """Initialize the read thread to receive the video.
         """
-        readTh = Thread(name = 'StreamReceiving',target = self._read_stream, args = (self.outPs, ))
+        readTh = Thread(name='StreamReceiving', target=self._read_stream, args=(self.outPs, ))
         self.threads.append(readTh)
 
     # ===================================== READ STREAM ==================================
@@ -106,22 +94,24 @@ class CameraReceiver(WorkerProcess):
                 # ----------------------- read image -----------------------
                     frame = np.frombuffer(data, np.uint8)
                     frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
-                    frame = np.reshape(frame, self.imgSize)
-                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    #frame = np.reshape(frame, self.imgSize)
+                    #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    
                     #
                     # # ----------------------- show images -------------------
-                    #cv2.namedWindow('udpVid', cv2.WINDOW_NORMAL)
-                    #cv2.imshow('udpVid', frame)
+                    
+                    cv2.namedWindow('udpVid', cv2.WINDOW_NORMAL)
+                    cv2.imshow('udpVid', frame)
 
                     for p in self.outPs:
                         p.send([[stamp], frame])
 
-                    #if cv2.waitKey(1) & 0xFF == ord('q'):
-                    #    break
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
                 else:
                     print("Empty data")
-        except:
-            pass
+        except Exception as e:
+            print("Found exception ", str(e))
         finally:
             self.server_socket.close()
 
