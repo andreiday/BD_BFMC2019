@@ -27,9 +27,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 import sys
 import time
-import os
 from src.utils.templates.threadwithstop import ThreadWithStop
 import logging
+import socket
+import struct
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -41,60 +43,65 @@ class DisplayThread(ThreadWithStop):
     def __init__(self, inP):
         super(DisplayThread, self).__init__()
         self.inPs = inP
-        self.timeDisplay = 0
+        self.timeDisplay = 1
+        self.enableUdpSend = True
+
+        if self.enableUdpSend:
+            logger.info("Init udp sender to unity")
+            self.clientIp = '192.168.1.4'
+            self.portClient = 8052
+            self.client_address = (self.clientIp, self.portClient)
+            self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.client_socket.connect((self.client_address))
 
     def run(self):
         try:
+            oldTime = 0
             stamps = []
             while self._running:
-                # receive frames and stamp from pipe
-                stampLane, steering = self.inPs[0].recv()
-                stampSign, sign = self.inPs[1].recv()
+                # receive data and stamps from pipes
+                stampSign, sign = self.inPs[0].recv()
+                stampLane, steering = self.inPs[1].recv()
                 #stampGps, coords = self.inPs[2].recv()
 
-                if time.time() - self.timeDisplay > 0.5:
+                stamps.append(stampLane[0][0])
+                stamps.append(stampLane[0][1])
+                stamps.append(stampSign[0][1])
+                #stamps.append(stampGps[0][0])
+                stamps.append(time.time())
 
-                    self.timeDisplay = time.time()
-
-                    stamps.append(stampLane[0][0])
-                    stamps.append(stampLane[0][1])
-                    stamps.append(stampSign[0][1])
-                    stamps.append(time.time())
-
-                    #print("fusion: ", stamps, steering, sign)
-
+                if self.enableUdpSend:
+                    message = int.to_bytes(steering, length=1, byteorder='big', signed=True)
+                    print(message)
+                    self.client_socket.sendto(message, self.client_address)
+                
+                if time.time() - oldTime > self.timeDisplay:
+                    oldTime = time.time()
                     """Display all parameters on the screen.
                     """
 
                     # clear stdout for a smoother display
-                    #os.system('cls' if os.name=='nt' else 'clear')
+                    # os.system('cls' if os.name=='nt' else 'clear')
+                   
+                    logger.debug("\n========= Status ========="
+                        "\nspeed:                       " + str("nothing") +
+                        "\nsteering:                    " + str(steering) +
+                        "\nsign:                        " + str(sign))
                     '''
-                    print("========= Status =========")
-
-                    print(
-                        "speed:                         " + str(test) +
-                        "\nangle:                       " + str(steering) +
-                        "\nsign:                        " + str(sign) +
-                        "\nlane lines:                  " + str(test) +
-                        "\nintersection line flag:      " + str(test) +
-                        "\ncurrent state label:         " + str(test) +
-                        "\ncurrent states:              " + str(test) +
-                    
-
-                    logger.debug("\n========= Delays ========= " +
+                    logger.debug("\n========= Delays Delta ========= " +
                         "\nCam -> Lane:                 " + str(stamps[1]-stamps[0]) +
                         "\nCam -> Sign:                 " + str(stamps[2]-stamps[0]) +
                         "\nCam -> Fzz:                  " + str(stamps[3]-stamps[0]) +
                         "\nLane -> Fzz:                 " + str(stamps[3]-stamps[1]) +
                         "\nSign -> Fzz:                 " + str(stamps[3]-stamps[2]))
-                    '''
-
-                    stamps.clear()
+                     '''
+                stamps.clear()
 
         except Exception as e:
-            logger.exception(os.path.realpath(__file__))
-            logger.exception("Failed : ", e, "\n")
+            logging.exception("Failed : ", e, "\n")
             pass
 
     def stop(self):
+        if self.enableUdpSend:
+            self.client_socket.close()
         super(DisplayThread, self).stop()
