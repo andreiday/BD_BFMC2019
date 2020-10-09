@@ -78,11 +78,11 @@ class CameraPublisher(ThreadWithStop):
         self.camera = PiCamera()
 
         # camera settings
-        self.camera.resolution      =   (640,480)
-        self.camera.framerate       =   30
+        self.camera.resolution      =   (1640,1232)
+        self.camera.framerate       =   15
 
         self.camera.brightness      =   50
-        self.camera.shutter_speed   =   19000
+        self.camera.shutter_speed   =   1200
         self.camera.contrast        =   0
         self.camera.iso             =   0 # auto
 

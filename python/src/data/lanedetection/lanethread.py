@@ -26,7 +26,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 import sys
-import os
 import time
 from src.utils.templates.threadwithstop import ThreadWithStop
 from src.utils.imageprocessing.frameprocessing import DetectionProcessing
@@ -38,7 +37,8 @@ logger.setLevel(logging.ERROR)
 
 sys.path.append('.')
 
-MLFollower = False
+MLFollower = True
+
 
 class LaneDetThread(ThreadWithStop):
     def __init__(self, inP, outP):
@@ -70,7 +70,7 @@ class LaneDetThread(ThreadWithStop):
                 self.outPs.send([[stamps], steering_angle])
 
         except Exception as e:
-            logging.exception("Failed:", e, "\n")
+            logging.exception("Failed:{}".format(e))
             pass
 
         finally:

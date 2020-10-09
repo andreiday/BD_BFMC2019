@@ -30,9 +30,7 @@ import time
 from src.utils.templates.threadwithstop import ThreadWithStop
 import logging
 import socket
-import struct
-from io import BytesIO
-
+from src.utils.imageprocessing.move import steeringFit
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -43,8 +41,8 @@ class DisplayThread(ThreadWithStop):
     def __init__(self, inP):
         super(DisplayThread, self).__init__()
         self.inPs = inP
-        self.timeDisplay = 1
-        self.enableUdpSend = True
+        self.timeDisplay = 0.25
+        self.enableUdpSend = False
 
         if self.enableUdpSend:
             logger.info("Init udp sender to unity")
@@ -62,12 +60,13 @@ class DisplayThread(ThreadWithStop):
                 # receive data and stamps from pipes
                 stampSign, sign = self.inPs[0].recv()
                 stampLane, steering = self.inPs[1].recv()
-                #stampGps, coords = self.inPs[2].recv()
+                gpsInfo = self.inPs[2].recv()
+                traffic = self.inPs[3].recv()
 
                 stamps.append(stampLane[0][0])
                 stamps.append(stampLane[0][1])
                 stamps.append(stampSign[0][1])
-                #stamps.append(stampGps[0][0])
+                stamps.append(gpsInfo[0])
                 stamps.append(time.time())
 
                 if self.enableUdpSend:
@@ -79,14 +78,17 @@ class DisplayThread(ThreadWithStop):
                     oldTime = time.time()
                     """Display all parameters on the screen.
                     """
-
+                    steering = steeringFit(steering, 1, 179, -23, 23)
+                    steering = round(steering, 3)
                     # clear stdout for a smoother display
                     # os.system('cls' if os.name=='nt' else 'clear')
                    
                     logger.debug("\n========= Status ========="
                         "\nspeed:                       " + str("nothing") +
                         "\nsteering:                    " + str(steering) +
-                        "\nsign:                        " + str(sign))
+                        "\nsign:                        " + str(sign) +
+                        "\nTraffic:                     " + str(traffic) +
+                        "\nGPS:                         " + str(gpsInfo[1]))
                     '''
                     logger.debug("\n========= Delays Delta ========= " +
                         "\nCam -> Lane:                 " + str(stamps[1]-stamps[0]) +
@@ -96,9 +98,9 @@ class DisplayThread(ThreadWithStop):
                         "\nSign -> Fzz:                 " + str(stamps[3]-stamps[2]))
                      '''
                 stamps.clear()
-
+                
         except Exception as e:
-            logging.exception("Failed : ", e, "\n")
+            logging.exception("Failed : ", e)
             pass
 
     def stop(self):

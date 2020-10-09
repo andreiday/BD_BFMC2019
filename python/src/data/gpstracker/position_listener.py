@@ -35,12 +35,13 @@ sys.path.insert(0,'.')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 class PositionListener:
 	"""PositionListener aims to receive all message from the server. 
 	"""
 	def __init__(self, server_data):
 		
-		self.__server_data = server_data 
+		self.__server_data = server_data
 		self.socket_pos = None
 		self.daemon = True
 		self.coor = None
@@ -68,7 +69,7 @@ class PositionListener:
 						break
 
 					coor = json.loads(msg, cls=ComplexDecoder)
-					logger.debug(coor)
+
 					self.coor = coor
 
 				except socket.timeout:

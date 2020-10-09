@@ -37,10 +37,10 @@ from src.utils.templates.threadwithstop import ThreadWithStop
 
 class FusionThread(ThreadWithStop):
 
-    def __init__(self, inP, outP):
+    def __init__(self, inPs, outPs):
         super(FusionThread, self).__init__()
-        self.inP = inP
-        self.outP = outP
+        self.inPs = inPs
+        self.outPs = outPs
 
 
     def run(self):
@@ -48,11 +48,11 @@ class FusionThread(ThreadWithStop):
             while True:
                 pass
                 # receive frames and stamp from pipe
-                # _ = self.inP.recv()
-
+                stampLane, steering = self.inPs[1].recv()
+                #print(steering)
 
                 # send no. lanes through pipe
-                # self.outP.send([])
+                self.outPs.send([steering])
 
         except Exception as e:
             print(os.path.realpath(__file__))

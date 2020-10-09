@@ -33,7 +33,8 @@ from src.data.gpstracker import server_subscriber
 from src.data.gpstracker import position_listener
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+
 
 class GpsTracker(threading.Thread):
 
@@ -57,6 +58,7 @@ class GpsTracker(threading.Thread):
         """
         logger.info("Starting GPS Tracker")
         super().__init__()
+
         #: serverData object with server parameters
         self.__server_data = server_data.ServerData()
         #: discover the parameters of server

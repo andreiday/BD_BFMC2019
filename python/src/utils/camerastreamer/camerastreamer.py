@@ -28,8 +28,6 @@
 import socket
 import struct
 import time
-import numpy as np
-from multiprocessing import Process
 from threading import Thread
 
 import cv2
@@ -51,7 +49,7 @@ class CameraStreamer(WorkerProcess):
         outPs : list(Pipe)
             List of output pipes (not used at the moment)
         """
-        super(CameraStreamer,self).__init__( inPs, outPs)
+        super(CameraStreamer,self).__init__(inPs, outPs)
 
         self.serverIp   =  '192.168.1.3' # PC ip
         self.port       =  2244            # com port
@@ -61,7 +59,7 @@ class CameraStreamer(WorkerProcess):
         """Apply the initializing methods and start the threads.
         """
         self._init_socket()
-        super(CameraStreamer,self).run()
+        super(CameraStreamer, self).run()
 
     # ===================================== INIT THREADS =================================
     def _init_threads(self):
@@ -111,14 +109,14 @@ class CameraStreamer(WorkerProcess):
                 stamps, image = inP.recv()
 
                 result, image = cv2.imencode('.jpg', image, encode_param)
-                data   =  image.tobytes()
-                size   =  len(data)
+                data = image.tobytes()
+                size = len(data)
 
                 self.connection.write(struct.pack("<L",size))
                 self.connection.write(data)
 
             except Exception as e:
-                print("CameraStreamer failed to stream images:",e,"\n")
+                print("CameraStreamer failed to stream images:", e, "\n")
                 # Reinitialize the socket for reconnecting to client.
                 self.connection = None
                 self._init_socket()

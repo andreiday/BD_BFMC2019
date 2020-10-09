@@ -3,6 +3,10 @@ import time
 import os
 from src.utils.templates.threadwithstop import ThreadWithStop
 from src.brain.decisionmaking.decisionhandle import DecisionHandler
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
 
 sys.path.append('.')
 
@@ -21,9 +25,9 @@ class DecisionThread(ThreadWithStop):
         try:
             while self._running:
 
-
-                lane_lines, detected_sign, intersection_line, steering_angle, speed, _ , stamps = self.inPs.recv()
-
+                steering = self.inPs.recv()
+                
+                '''
                 stamps.append(time.time())
 
                 print("[INFO[1]: Decision Thread]")
@@ -34,11 +38,17 @@ class DecisionThread(ThreadWithStop):
                 data = [lane_lines, detected_sign, intersection_line, steering_angle, speed]
 
                 control_data = self.decisions.doState(data)
-
-
-                #self.outPs.send(control_data)
+                '''
+                #logging.debug("Steering {}".format(steering))
+                self.outPs.send(steering)
 
         except Exception as e:
-            print(os.path.realpath(__file__))
-            print("Failed : " , e ,"\n")
+            logging.exception("Failed:{}".format(e))
             pass
+
+        finally:
+            self.outPs.close()
+            logging.info("DecisionThread Pipe successfully closed")
+
+    def stop(self):
+        super(DecisionThread, self).stop()

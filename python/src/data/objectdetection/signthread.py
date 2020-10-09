@@ -32,7 +32,7 @@ from src.utils.imageprocessing.frameprocessing import DetectionProcessing
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.ERROR)
 
 sys.path.append('.')
 
@@ -48,11 +48,12 @@ class SignThread(ThreadWithStop):
         self.inPs = inP
         self.outPs = outP
 
-        self.enableDetection = True
+        self.enableDetection = False
         self.detected_sign = "None"
 
     def run(self):
         try:
+            enabled = 0
             while self._running:
 
                 # receive frames and stamp from pipe
@@ -68,14 +69,14 @@ class SignThread(ThreadWithStop):
 
                 self.detected_sign = str(self.detected_sign)
 
-                if self.enableDetection is False and time.time()-enabled > 0.25:
-                    # logging.debug("Detected sign: {}".format(self.detected_sign))
-                    self.enableDetection = True
+                #if self.enableDetection is False and time.time()-enabled > 0.1:
+                    #logging.debug("Detected sign: {}".format(self.detected_sign))
+                    #self.enableDetection = True
 
                 self.outPs.send([[stamps], self.detected_sign])
 
         except Exception as e:
-            logging.exception("Failed:", e, "\n")
+            logging.exception("Failed:{}".format(e))
             pass
 
         finally:

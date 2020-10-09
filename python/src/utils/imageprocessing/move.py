@@ -3,28 +3,23 @@ import math
 class for computing steering and speed
 '''
 
-MAX_SPEED = 0.215
-DEV_SPEED = [0.000, 0.000, 0.000]
-displayHeadlingLine = False
+MAX_SPEED = 30
+DEV_SPEED = [10, 10, 10]
+
 
 class MoveLogic(object):
 
     def __init__(self):
-
-        self.curr_steering_angle = 0.0
+        self.curr_steering_angle = 90
         self.current_speed = MAX_SPEED
 
     def getSpeed(self, lane_lines, steering):
 
         steering = abs(steering)
 
-        if len(lane_lines) == 2:
-            if steering > 10:
+        if len(lane_lines) == (2 or 1):
+            if steering > 120 or steering < 60:
                 self.current_speed = MAX_SPEED - DEV_SPEED[0]
-
-        if len(lane_lines) == 1:
-            if steering > 10:
-                self.current_speed = MAX_SPEED - DEV_SPEED[1]
 
         if len(lane_lines) == 0:
             self.current_speed = MAX_SPEED - DEV_SPEED[2]
@@ -47,6 +42,18 @@ class MoveLogic(object):
             self.curr_steering_angle = stabilize_steering_angle(self.curr_steering_angle, new_steering_angle, len(lane_lines))
 
             return self.curr_steering_angle
+
+
+def steeringFit(value, leftMin, leftMax, rightMin, rightMax):
+    # Figure out how 'wide' each range is
+    leftSpan = leftMax - leftMin
+    rightSpan = rightMax - rightMin
+
+    # Convert the left range into a 0-1 range (float)
+    valueScaled = float(value - leftMin) / float(leftSpan)
+
+    # Convert the 0-1 range into a value in the right range.
+    return rightMin + (valueScaled * rightSpan)
 
 
 def compute_steering_angle(frame, lane_lines):
@@ -74,19 +81,13 @@ def compute_steering_angle(frame, lane_lines):
     # find the steering angle, which is angle between navigation direction to end of center line
     y_offset = int(height / 2)
 
-    if displayHeadlingLine:
-        angle_to_mid_radian = math.atan(x_offset / y_offset)  # angle (in radian) to center vertical line
-        angle_to_mid_deg = int(angle_to_mid_radian * 180.0 / math.pi)  # angle (in degrees) to center vertical line
-        
-        steering_angle = angle_to_mid_deg + 90  # this is the steering angle needed by picar front wheel
-        return steering_angle
-    else:
-        angle_to_mid_radian = math.atan(x_offset / y_offset) # angle (in radian) to center vertical line
-        angle_to_mid_deg = int(angle_to_mid_radian * 180.0 / math.pi)
-        steering_angle = angle_to_mid_deg
-        # steering_angle = angle_to_mid_radian * 17 # for sending steering to car
+   
+    angle_to_mid_radian = math.atan(x_offset / y_offset) # angle (in radian) to center vertical line
+    angle_to_mid_deg = int(angle_to_mid_radian * 180.0 / math.pi)
+    steering_angle = angle_to_mid_deg
+    # steering_angle = angle_to_mid_radian * 17 # for sending steering to car
 
-        return steering_angle
+    return steering_angle
 
 
 def stabilize_steering_angle(curr_steering_angle, new_steering_angle, num_of_lane_lines, max_angle_deviation_two_lines=2.5, max_angle_deviation_one_lane=7.5):
@@ -111,10 +112,10 @@ def stabilize_steering_angle(curr_steering_angle, new_steering_angle, num_of_lan
         stabilized_steering_angle = new_steering_angle
 
     # angle limiting
-
+    '''
     if stabilized_steering_angle >= 23:
         stabilized_steering_angle = 23
     elif stabilized_steering_angle <= -23:
         stabilized_steering_angle = -23
-
+    '''
     return stabilized_steering_angle

@@ -9,3 +9,5 @@ python/src/utils/models/README.md
 python/src/utils/models/lanes/keras_model.h5
 python/src/utils/models/signs/graph.pbtxt
 python/src/utils/models/signs/ssdlite_mobilenet_v2_coco.pb
+python/src/vid/Finals_vid.h264
+python/src/vid/Examvid/Exam_VER.h264

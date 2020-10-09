@@ -40,7 +40,7 @@ from src.hardware.serialhandler.serialhandler import SerialHandler
 # data acquisition imports
 from src.data.lanedetection.laneprocess import LaneDetectionProcess
 from src.data.objectdetection.objectdetprocess import ObjectDetectProcess
-from src.data.gpstracker.gpsprocess import GPSProcess
+from src.data.gpstracker.envprocess import EnvironmentCommProcess
 
 # brian imports
 from src.brain.controller.controllerprocess import ControllerProcess
@@ -52,16 +52,14 @@ from src.utils.camerastreamer.camerareceiver import CameraReceiver
 from src.utils.cameraspoofer.cameraspooferprocess import CameraSpooferProcess
 
 # camera flags
-
 spoof_b = True                  # enable camera spoofer
 unityRecv_b = False
 
-
 # data flags
-gps_b = True                   # enable gps communication
+env_b = True                   # enable gps communication
 objDet_b = True
 laneDet_b = True
-flowTest_b = False
+flowTest_b = True
 
 # HW flags
 commSerial_b = False            # enable serial communication (controller & serial handler)
@@ -71,7 +69,7 @@ sys.path.append('.')
 dir = os.path.join("src", "vid")
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 consoleHandler = logging.StreamHandler()
 consoleHandler.setLevel(logging.DEBUG)
@@ -101,10 +99,9 @@ def main():
     if objDet_b:
         objCamRecv, objCamSend = Pipe(duplex=False)
 
-
     # allDataFzzInPipes        - input for data fusion process from:
     # laneFzzSend                  - output from lane detection process
-    # objFzzSend                - output from object recognition process         TODO
+    # objFzzSend                - output from object recognition process    TODO
     # gpsFzzSend                    - output from gps process
 
     if laneDet_b:
@@ -113,8 +110,11 @@ def main():
     if objDet_b:
         objFzzRecv, objFzzSend = Pipe(duplex=False)
 
-    if gps_b:
+    if env_b:
         gpsFzzRecv, gpsFzzSend = Pipe(duplex=False)
+        trafficFzzRecv, trafficFzzSend = Pipe(duplex=False)
+        allEnvCommOutPipes.append(gpsFzzSend)
+        allEnvCommOutPipes.append(trafficFzzSend)
 
     # fzzOut       - output from data fusion process to:
     # decIn        - input for decision making process              TODO
@@ -129,7 +129,7 @@ def main():
     # cntOut        - output from controller
 
         cntIn, decOut = Pipe(duplex=True)       # controller I/O <=> decision making I/O
-        serialIn, cntOut = Pipe(duplex=True)    # controller I/O <=> serial I/O
+        _, cntOut = Pipe(duplex=True)    # controller I/O <=> serial I/O
 
     if objDet_b:
         allCamPipes.append(objCamSend)
@@ -139,8 +139,9 @@ def main():
         allCamPipes.append(laneCamSend)
         allDataFzzInPipes.append(laneFzzRecv)
 
-    if gps_b:
+    if env_b:
         allDataFzzInPipes.append(gpsFzzRecv)
+        allDataFzzInPipes.append(trafficFzzRecv)
 
     #
     # ================================ CAMERA Handler ==============================================
@@ -177,16 +178,16 @@ def main():
         objDetection = ObjectDetectProcess([objCamRecv], [objFzzSend])
         allProcesses.append(objDetection)
 
-    if gps_b:
-        gpsProcess = GPSProcess([], [gpsFzzSend])
-        allProcesses.append(gpsProcess)
+    if env_b:
+        envCommProcess = EnvironmentCommProcess([], allEnvCommOutPipes)
+        allProcesses.append(envCommProcess)
 
     # ================================ Data fusion process ==============================================
     # create process with :
     #       - input ([fzzIn])            :
     #       - output ([fzzOut])           :
 
-    dataFusionProc = DataFusionProcess(allDataFzzInPipes, [])
+    dataFusionProc = DataFusionProcess(allDataFzzInPipes, [fzzOut])
     allProcesses.append(dataFusionProc)
 
     # ================================ Decision making proc ==========================================
@@ -202,9 +203,10 @@ def main():
     # create process with :
     #       - input ([cntIn])            :   []
     #       - output ([cntOut])          :   []
-    if commSerial_b:
         controllerProc = ControllerProcess([cntIn], [cntOut])
         allProcesses.append(controllerProc)
+    
+    if commSerial_b:
 
     # ================================ Serial Handler ================================================
     # create process with :
@@ -215,7 +217,7 @@ def main():
         allProcesses.append(serialProc)
 
     # ================================ PROCESS HANDLER ==============================================
-    logger.info("Starting the processes!")
+    print("Starting the processes!")
     
     print(allProcesses)
     for proc in allProcesses:
@@ -229,7 +231,7 @@ def main():
 
     except KeyboardInterrupt:
 
-        logger.info("\nCatching a KeyboardInterruption exception! Shutdown all processes.\n")
+        print("\nCatching a KeyboardInterruption exception! Shutdown all processes.\n")
         for proc in allProcesses:
             if hasattr(proc, 'stop') and callable(getattr(proc, 'stop')):
                 print("Process with stop", proc)

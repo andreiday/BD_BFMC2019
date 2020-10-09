@@ -12,21 +12,28 @@ sys.path.append('.')
 
 dir = os.path.join("src", "utils", "models")
 
-signsModelPath = os.path.join(dir, "signs",  "ssdlite_mobilenet_v2_coco.pb")
-signGraphPath = os.path.join(dir, "signs", "graph.pbtxt")
-lanesModelPath = os.path.join(dir, "lanes",  "keras_model.h5")
+signsModelPath = os.path.join(dir, "signs",  "signs_traffic_model.pb")
+signGraphPath = os.path.join(dir, "signs", "optimized_graph.pbtxt")
+
+obstacleModelPath = os.path.join(dir, "obstacles", "car", "model_car.pb")
+obstacleGraphPath = os.path.join(dir, "obstacles", "car", "graph.pbtxt")
+
+lanesModelPath = os.path.join(dir, "lanes",  "lane_navigation_final.h5")
 
 # enable keras lane follower model
-MLFollower = False
+MLFollower = True
 
 # enable intel neural computing stick communication
 NCSigns = False
+
+# show lane detection
+showLanes = True
 
 class DetectionProcessing():
     def __init__(self):
         # init signs
         logger.info('Init detection processing...')
-
+        self.steeringAnglML = 90
         self.net = cv2.dnn.readNetFromTensorflow(signsModelPath, signGraphPath)
 
         if NCSigns:
@@ -40,12 +47,25 @@ class DetectionProcessing():
             self.lanesModel = load_model(lanesModelPath)
         
     def followLanesNvidia(self, frame):
-        showVideo("orig", frame)
+        #showVideo("orig", frame)
+        if showLanes:
+            edges = detectEdges(frame)
+
+            cropped_edges = regionOfInterestLanes(edges)
+            showVideo("crpedges", cropped_edges)
+
+            line_segments = detectLineSegments(cropped_edges)
+
+            lane_lines_images = displayLines(frame, line_segments)
+            showVideo("lanelines", lane_lines_images)
 
         steering_angle = self.compute_steering_angle(frame)
-        logger.debug("steering_angle = %d" % steering_angle)
+
+        #logger.debug("steering_angle = {}".format(steering_angle))
+       
         final_frame = display_heading_line(frame, steering_angle)
         showVideo("heading", final_frame)
+
         return steering_angle
 
     def compute_steering_angle(self, frame):
@@ -53,11 +73,12 @@ class DetectionProcessing():
             We assume that camera is calibrated to point to dead center
         """
         preprocessed = img_preprocess(frame)
+        preprocessed = regionOfInterestLanes(preprocessed)
         X = np.asarray([preprocessed])
-        steering_angle = self.lanesModel.predict(X)[0]
+        self.steeringAnglML = self.lanesModel.predict(X)[0]
 
-        logger.debug('new steering angle: %s' % steering_angle)
-        return int(steering_angle + 0.5) # round the nearest integer
+        #logger.debug('new steering angle: {}'.format(self.steeringAnglML))
+        return int(self.steeringAnglML + 0.5) # round the nearest integer
 
     def followLanesCV(self, frame):
         
@@ -95,7 +116,7 @@ class DetectionProcessing():
                         return "N"
 
     def detectSigns(self, frame):
-        self.CLASSES = ["park", "pedestrians", "priority", "stop"]
+        self.CLASSES = ["park", "pedestrians", "priority", "stop", "traffic_green", "traffic_red", "traffic_yellow"]
         self.COLORS = np.random.uniform(0, 255, size=(len(self.CLASSES), 3))
 
         sign = cv2.resize(frame, (300, 300))
@@ -117,7 +138,7 @@ class DetectionProcessing():
             confidence = detections[0, 0, i, 2]
             # filter out weak detections by ensuring the `confidence` is
             # greater than the minimum confidence
-            if confidence > 0.6:
+            if confidence > 0.8:
                 # extract the index of the class label from the
                 # `detections`, then compute the (x, y)-coordinates of
                 # the bounding box for the object
@@ -148,17 +169,19 @@ class DetectionProcessing():
 
 def img_preprocess(image):
     height, _, _ = image.shape
-    image = image[int(height/2):,:,:]  # remove top half of the image, as it is not relevant for lane following
+    image = image[int(height/2):, :, :]  # remove top half of the image, as it is not relevant for lane following
     image = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)  # Nvidia model said it is best to use YUV color space
-    image = cv2.GaussianBlur(image, (3,3), 0)
-    image = cv2.resize(image, (200,66)) # input image size (200,66) Nvidia model
+    image = cv2.GaussianBlur(image, (1, 1), 0)
+    image = cv2.resize(image, (200, 66)) # input image size (200,66) Nvidia model
     image = image / 255 # normalizing, the processed image becomes black for some reason.  do we need this?
     return image
 
-def detectEdges(frame, hue=(27, 160), lum=(80, 255), sat=(0, 255)):
+#def detectEdges(frame, hue=(27, 160), lum=(80, 255), sat=(0, 255)):
+
+def detectEdges(frame, hue=(27, 160), lum=(125, 255), sat=(0, 255)):
     '''
     '''
-    frame = cv2.medianBlur(frame, 3)
+    frame = cv2.medianBlur(frame, 5)
 
     hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
     lower_white = np.array([hue[0], lum[0], sat[0]], dtype=np.uint8)
@@ -167,6 +190,7 @@ def detectEdges(frame, hue=(27, 160), lum=(80, 255), sat=(0, 255)):
     edges = cv2.Canny(mask, 200, 400)
 
     return edges
+
 
 '''
 # Nvidia model said it is best to use YUV color space
@@ -181,6 +205,40 @@ def detectEdgesNvidia(frame, hue=(27, 160), lum=(80, 255), sat=(0, 255)):
 
     return edges
 '''
+
+
+def regionOfInterestLanesML(edges):
+    '''
+    '''
+    height, width = edges.shape
+    mask = np.zeros_like(edges)
+
+
+    polygon = np.array([[
+        (0, (height * 1 / 2)),
+        (width, (height * 1 / 2)),
+        (width, height),
+        (0, height),
+    ]], np.int32)
+
+    # only car front triangle
+
+    polygon_front = np.array([[
+        ((width * 1 / 1.4), height * 1/1.2),
+        ((width * 1 / 3), height * 1/1.2),
+        (width * 1/5, height),
+        (width * 1/1.15, height),
+    ]], np.int32)
+
+    cv2.fillPoly(mask, polygon, 255)
+
+    # remove front
+    cv2.fillPoly(mask, polygon_front, 0)
+
+    cropped_edges = cv2.bitwise_and(edges, mask)
+
+    return cropped_edges
+
 
 def regionOfInterestLanes(edges):
     '''
@@ -204,11 +262,12 @@ def regionOfInterestLanes(edges):
     ]], np.int32)
 
     # only car front triangle
+
     polygon_front = np.array([[
-        ((width * 1 / 1.4), height * 1/2),
-        ((width * 1 / 3), height * 1/2),
-        (width * 1/3.1, height),
-        (width * 1/1.3, height),
+        ((width * 1 / 1.4), height * 1/1.2),
+        ((width * 1 / 3), height * 1/1.2),
+        (width * 1/5, height),
+        (width * 1/1.15, height),
     ]], np.int32)
 
     cv2.fillPoly(mask, polygon, 255)

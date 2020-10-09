@@ -67,7 +67,7 @@ class WriteThread(Thread):
             command = self.inP.recv()
             command_msg = self.messageConverter.get_command(**command)
 
-            # print("COMMAND ", command_msg)
+            print("COMMAND ", command_msg)
             self.serialCom.write(command_msg.encode('ascii'))
             self.logFile.write(command_msg)
 

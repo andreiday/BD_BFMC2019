@@ -28,13 +28,13 @@
 
 
 import sys
-sys.path.append('.')
-
-import threading
-
-from threading import Thread
-from multiprocessing import Process
 from src.utils.templates.workerthread import WorkerThread
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
+sys.path.append('.')
+from src.utils.imageprocessing.move import steeringFit
 
 class Controller(WorkerThread):
 
@@ -46,14 +46,26 @@ class Controller(WorkerThread):
 
 
     def run(self):
-        while True:
-            action, speed, steering_angle = self.inPs.recv()
+        try:
+            while True:
+                steering_angle = self.inPs.recv()
+                
+                steering_car = steeringFit(steering_angle[0], 1, 179, -23, 23)
 
-            movecommands = {
-                'action' : action,
-                'speed' : float(speed),
-                'steerAngle' : float(steering_angle),
-            }
+                movecommands = {
+                    'action' : 'MCTL',
+                    'speed' : float(0),
+                    'steerAngle' : float(steering_car),
+                }
 
-            print(movecommands)
-            # self.outPs.send(movecommands)
+                #print(movecommands)
+                #self.outPs.send(movecommands)
+        
+        except Exception as e:
+            logging.exception("Failed:{}".format(e))
+            pass
+
+        finally:
+            self.outPs.close()
+            logging.info("ControlTh Pipe successfully closed")
+
