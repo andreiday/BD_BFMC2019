@@ -59,7 +59,7 @@ class Controller(WorkerThread):
                 }
 
                 #print(movecommands)
-                #self.outPs.send(movecommands)
+                self.outPs.send(movecommands)
         
         except Exception as e:
             logging.exception("Failed:{}".format(e))

@@ -62,7 +62,7 @@ laneDet_b = True
 flowTest_b = True
 
 # HW flags
-commSerial_b = False            # enable serial communication (controller & serial handler)
+commSerial_b = True            # enable serial communication (controller & serial handler)
 
 # others
 sys.path.append('.')

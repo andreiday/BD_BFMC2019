@@ -24,10 +24,10 @@ lanesModelPath = os.path.join(dir, "lanes",  "lane_navigation_final.h5")
 MLFollower = True
 
 # enable intel neural computing stick communication
-NCSigns = False
+NCSigns = True
 
 # show lane detection
-showLanes = True
+showLanes = False
 
 class DetectionProcessing():
     def __init__(self):
@@ -73,7 +73,6 @@ class DetectionProcessing():
             We assume that camera is calibrated to point to dead center
         """
         preprocessed = img_preprocess(frame)
-        preprocessed = regionOfInterestLanes(preprocessed)
         X = np.asarray([preprocessed])
         self.steeringAnglML = self.lanesModel.predict(X)[0]
 
@@ -117,12 +116,12 @@ class DetectionProcessing():
 
     def detectSigns(self, frame):
         self.CLASSES = ["park", "pedestrians", "priority", "stop", "traffic_green", "traffic_red", "traffic_yellow"]
-        self.COLORS = np.random.uniform(0, 255, size=(len(self.CLASSES), 3))
+        self.COLORS = np.random.uniform(127, 255, size=(len(self.CLASSES), 3))
 
         sign = cv2.resize(frame, (300, 300))
         (h, w) = sign.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(sign, (300, 300)), swapRB=True)
-        showVideo("signs", frame)
+        
 
         # grab the frame dimensions and convert it to a blob
         # pass the blob through the network and obtain the detections and
@@ -131,8 +130,8 @@ class DetectionProcessing():
         self.net.setInput(blob)
         detections = self.net.forward()
         # loop over the detections
-        for i in np.arange(0, detections.shape[2]):
 
+        for i in np.arange(0, detections.shape[2]):
             # extract the confidence (i.e., probability) associated with
             # the prediction
             confidence = detections[0, 0, i, 2]
@@ -155,14 +154,12 @@ class DetectionProcessing():
                     cv2.rectangle(sign, (startX, startY), (endX, endY), self.COLORS[idx-1], 2)
                     y = startY - 15 if startY - 15 > 15 else startY + 15
                     cv2.putText(sign, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLORS[idx-1], 2)
-
-                    cv2.namedWindow('sign', cv2.WINDOW_NORMAL)
-                    cv2.imshow('sign', sign)
-                    cv2.waitKey(1)
+                    showVideo('sign', sign)
 
                 label = "{}".format(self.CLASSES[idx-1])
                 logger.debug("label: ", label)
                 return label
+            
 
 
 # ====================== Image Processing functions =====================
@@ -170,6 +167,8 @@ class DetectionProcessing():
 def img_preprocess(image):
     height, _, _ = image.shape
     image = image[int(height/2):, :, :]  # remove top half of the image, as it is not relevant for lane following
+    
+    
     image = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)  # Nvidia model said it is best to use YUV color space
     image = cv2.GaussianBlur(image, (1, 1), 0)
     image = cv2.resize(image, (200, 66)) # input image size (200,66) Nvidia model
@@ -205,39 +204,6 @@ def detectEdgesNvidia(frame, hue=(27, 160), lum=(80, 255), sat=(0, 255)):
 
     return edges
 '''
-
-
-def regionOfInterestLanesML(edges):
-    '''
-    '''
-    height, width = edges.shape
-    mask = np.zeros_like(edges)
-
-
-    polygon = np.array([[
-        (0, (height * 1 / 2)),
-        (width, (height * 1 / 2)),
-        (width, height),
-        (0, height),
-    ]], np.int32)
-
-    # only car front triangle
-
-    polygon_front = np.array([[
-        ((width * 1 / 1.4), height * 1/1.2),
-        ((width * 1 / 3), height * 1/1.2),
-        (width * 1/5, height),
-        (width * 1/1.15, height),
-    ]], np.int32)
-
-    cv2.fillPoly(mask, polygon, 255)
-
-    # remove front
-    cv2.fillPoly(mask, polygon_front, 0)
-
-    cropped_edges = cv2.bitwise_and(edges, mask)
-
-    return cropped_edges
 
 
 def regionOfInterestLanes(edges):

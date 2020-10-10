@@ -25,14 +25,15 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
-
-
 import sys
 import time
 import os
+from src.utils.templates.threadwithstop import ThreadWithStop
+import logging
 sys.path.append('.')
 
-from src.utils.templates.threadwithstop import ThreadWithStop
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
 
 
 class FusionThread(ThreadWithStop):
@@ -55,6 +56,5 @@ class FusionThread(ThreadWithStop):
                 self.outPs.send([steering])
 
         except Exception as e:
-            print(os.path.realpath(__file__))
-            print("Failed to start WriteThreadFzz because : : " , e ,"\n")
+            logging.exception("Failed:{}".format(e))
             pass

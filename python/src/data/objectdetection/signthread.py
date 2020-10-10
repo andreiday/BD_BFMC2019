@@ -48,7 +48,7 @@ class SignThread(ThreadWithStop):
         self.inPs = inP
         self.outPs = outP
 
-        self.enableDetection = False
+        self.enableDetection = True
         self.detected_sign = "None"
 
     def run(self):
@@ -69,9 +69,9 @@ class SignThread(ThreadWithStop):
 
                 self.detected_sign = str(self.detected_sign)
 
-                #if self.enableDetection is False and time.time()-enabled > 0.1:
+                if self.enableDetection is False and time.time()-enabled > 0.1:
                     #logging.debug("Detected sign: {}".format(self.detected_sign))
-                    #self.enableDetection = True
+                    self.enableDetection = True
 
                 self.outPs.send([[stamps], self.detected_sign])
 
