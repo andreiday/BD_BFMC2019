@@ -129,7 +129,7 @@ def main():
     # cntOut        - output from controller
 
         cntIn, decOut = Pipe(duplex=True)       # controller I/O <=> decision making I/O
-        _, cntOut = Pipe(duplex=True)    # controller I/O <=> serial I/O
+        serialIn, cntOut = Pipe(duplex=True)    # controller I/O <=> serial I/O
 
     if objDet_b:
         allCamPipes.append(objCamSend)
